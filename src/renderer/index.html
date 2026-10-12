@@ -1,0 +1,429 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>国龙食品机械销售工具</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body class="catalog-mode">
+    <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+    <div class="app-shell">
+      <header class="topbar">
+        <div class="brand-block">
+          <img src="./assets/logo.svg" alt="国龙夹层锅" class="brand-logo" />
+          <div>
+            <h1>销售选品工作台</h1>
+            <p id="pageSubtitle">产品资料、销售选品、合同与报价单输出</p>
+          </div>
+        </div>
+        <div class="top-actions">
+          <button id="backToCatalogBtn" class="ghost-btn hidden">返回选品</button>
+          <button id="recentFilesBtn" class="ghost-btn">最近文件</button>
+          <button id="newItemBtn" class="primary-btn">新增商品</button>
+        </div>
+      </header>
+
+      <main id="catalogPage" class="workspace page active">
+        <section class="catalog">
+          <div class="brand-hero">
+            <button id="heroUpdateAppBtn" class="app-version update-btn" type="button"></button>
+            <button id="heroDataRefreshBtn" class="data-refresh-btn" type="button" title="同步最新数据库、图片、资料和库存">刷新资料</button>
+            <div class="hero-copy">
+              <img src="./assets/logo.svg" alt="" />
+              <div>
+                <h2>国龙食品机械产品资料库</h2>
+              </div>
+            </div>
+            <div class="hero-actions">
+              <div class="hero-toggle-stack">
+                <label class="price-visibility-toggle" title="打开后制作报价单时使用英文模板，不影响合同">
+                  <input id="quoteEnglishToggle" type="checkbox" />
+                  <span class="switch-track" aria-hidden="true"></span>
+                  <span class="switch-text">英文报价</span>
+                </label>
+                <label class="price-visibility-toggle" title="关闭后仅隐藏界面价格，不修改数据库">
+                  <input id="priceVisibilityToggle" type="checkbox" checked />
+                  <span class="switch-track" aria-hidden="true"></span>
+                  <span class="switch-text">显示价格</span>
+                </label>
+              </div>
+              <div class="hero-button-stack">
+                <button id="heroRecentFilesBtn" class="ghost-btn hero-recent-btn">最近文件</button>
+                <button id="heroAfterSalesVideoBtn" class="ghost-btn hero-after-sales-btn">售后视频</button>
+              </div>
+              <div class="hero-button-stack">
+                <button id="heroNewItemBtn" class="primary-btn hero-new-btn">新增商品</button>
+                <button id="heroImportInventoryBtn" class="ghost-btn hero-inventory-btn">导入库存</button>
+              </div>
+            </div>
+          </div>
+          <div class="filters">
+            <div class="segmented" id="typeFilter">
+              <button data-type="all" class="active">全部</button>
+              <button data-type="equipment">设备</button>
+              <button data-type="part">配件</button>
+            </div>
+            <select id="categoryFilter">
+              <option value="all">全部分类</option>
+            </select>
+            <input id="searchInput" type="search" placeholder="搜索名称、型号、容量、加热方式..." />
+          </div>
+          <div id="cards" class="cards"></div>
+        </section>
+
+        <aside class="selection">
+          <div class="next-actions top-next-actions">
+            <p class="action-hint">选好商品后，选择要输出的单据。</p>
+            <button id="goContractBtn" class="primary-btn wide">制作合同</button>
+            <button id="goQuoteBtn" class="ghost-btn wide">制作报价单</button>
+          </div>
+          <div class="panel-head">
+            <div>
+              <h2>已选清单</h2>
+              <span id="selectedCount">0 项</span>
+            </div>
+            <button id="clearSelectedBtn" class="ghost-btn">清空</button>
+          </div>
+          <div id="selectedList" class="selected-list empty">暂未选择设备或配件</div>
+        </aside>
+      </main>
+
+      <main id="contractPage" class="document-page page">
+        <section class="document-main">
+          <div class="document-head">
+            <div>
+              <h2>制作合同</h2>
+            </div>
+            <button id="createContractBtn" class="primary-btn">生成合同 Excel</button>
+          </div>
+          <div class="document-grid">
+            <div class="contract-box">
+              <h2>合同信息</h2>
+              <div class="contract-info-top">
+                <div class="invoice-info-group">
+                  <label class="invoice-info-label">
+                    <span>需方开票信息</span>
+                    <div class="invoice-textarea-wrap">
+                      <textarea id="buyerInvoiceInfo" class="invoice-textarea text-input-zh" lang="zh-CN" spellcheck="false" autocomplete="off" placeholder="可直接粘贴客户发来的开票信息"></textarea>
+                      <button id="clearInvoiceInfoBtn" type="button" class="clear-invoice-btn" title="清空开票信息" aria-label="清空开票信息">×</button>
+                    </div>
+                  </label>
+                  <div class="inline-actions">
+                    <button id="formatInvoiceInfoBtn" type="button" class="ghost-btn">整理识别</button>
+                  </div>
+                </div>
+                <div class="contract-terms-grid">
+                  <label class="contract-review-field">
+                    交货方式
+                    <select id="deliveryMethod">
+                      <option value="物流配货到需方城市，物流站点自提">物流站点自提</option>
+                      <option value="物流配货到需方城市，送货上门">送货上门</option>
+                      <option value="送到客户指定位置">送到客户指定位置</option>
+                    </select>
+                  </label>
+                  <label class="contract-review-field">
+                    运费负担
+                    <select id="freight">
+                      <option value="需方支付">需方支付</option>
+                      <option value="供方支付">供方支付</option>
+                    </select>
+                  </label>
+                  <label class="contract-review-field">
+                    交货期限
+                    <input id="deliveryDate" list="deliveryDateOptions" lang="zh-CN" spellcheck="false" autocomplete="off" class="compact-input text-input-zh" value="货款到账后1天发货。" />
+                    <datalist id="deliveryDateOptions">
+                      <option value="货款到账后1天发货。"></option>
+                      <option value="工期  天左右"></option>
+                    </datalist>
+                  </label>
+                  <label class="contract-review-field">
+                    开票类型
+                    <select id="invoiceType">
+                      <option value="special_food_machinery">国龙食品机械（专票）</option>
+                      <option value="normal_kitchen_factory">厨房设备厂（普票）</option>
+                    </select>
+                  </label>
+                  <label class="span-2 contract-review-field">
+                    付款方式
+                    <input id="payment" list="paymentOptions" lang="zh-CN" spellcheck="false" autocomplete="off" class="payment-input text-input-zh" value="需方应于合同生效后，通过公对公转账方式向供方一次性付清上述款项。" />
+                    <datalist id="paymentOptions">
+                      <option value="需方应于合同生效后，通过公对公转账方式向供方一次性付清上述款项。"></option>
+                      <option value="需方应向供方支付[合同总价款30%]作为定金，发货之前全款付清。"></option>
+                    </datalist>
+                  </label>
+                </div>
+              </div>
+              <div class="contract-form-grid contract-auto-fields">
+                <label>
+                  需方名称
+                  <input id="customerName" class="text-input-zh" lang="zh-CN" spellcheck="false" autocomplete="off" placeholder="例如：张三公司" />
+                </label>
+                <label>
+                  客户简称
+                  <input id="customerCode" autocomplete="off" placeholder="例如：ZS" />
+                </label>
+                <label>
+                  签订日期
+                  <input id="contractDate" type="date" />
+                </label>
+                <label>
+                  合同编号
+                  <input id="contractNo" autocomplete="off" placeholder="自动生成，可手动修改" />
+                </label>
+              </div>
+              <p id="statusText" class="status"></p>
+            </div>
+            <div>
+              <h2>合同商品清单</h2>
+              <div id="contractSelectedList" class="selected-list empty">暂未选择设备或配件</div>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <main id="quotePage" class="document-page page">
+        <section class="document-main">
+          <div class="document-head">
+            <div>
+              <h2>制作报价单</h2>
+            </div>
+            <button id="createQuoteBtn" class="primary-btn">生成报价单 Excel</button>
+          </div>
+          <div class="document-grid">
+            <div class="contract-box">
+              <h2>报价单备注</h2>
+              <label>
+                备注
+                <textarea id="quoteRemark" class="quote-remark-textarea text-input-zh" lang="zh-CN" spellcheck="false" autocomplete="off">备注：主要填写含不含税运，设备不含安装费用，设备整机质保一年，可以终身免费远程技术指导</textarea>
+              </label>
+              <p id="quoteStatusText" class="status"></p>
+            </div>
+            <div>
+              <h2>报价商品清单</h2>
+              <div id="quoteSelectedList" class="selected-list empty">暂未选择设备或配件</div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <dialog id="itemDialog">
+      <form id="itemForm" method="dialog">
+        <div class="dialog-head">
+          <div>
+            <h2 id="dialogTitle">新增商品</h2>
+            <p class="dialog-subtitle">维护产品资料、参数、图片和销售展示信息</p>
+          </div>
+          <div class="dialog-head-actions">
+            <button type="button" id="copyItemBtn" class="soft-btn">复制</button>
+            <button type="button" id="closeDialogBtn" class="icon-btn" aria-label="关闭">×</button>
+          </div>
+        </div>
+
+        <input id="itemId" type="hidden" />
+        <div class="form-grid">
+          <label>
+            商品类型
+            <select id="itemType">
+              <option value="equipment">设备</option>
+              <option value="part">配件</option>
+            </select>
+          </label>
+          <label>
+            名称
+            <input id="itemName" class="text-input-zh" lang="zh-CN" spellcheck="false" autocomplete="off" required />
+          </label>
+          <label>
+            型号
+            <input id="itemModel" class="text-input-zh" lang="zh-CN" spellcheck="false" autocomplete="off" />
+          </label>
+          <label class="equipment-only">
+            产品分类
+            <select id="itemCategory"></select>
+          </label>
+          <label>
+            价格
+            <input id="itemPrice" type="number" min="0" step="0.01" placeholder="可为空" />
+          </label>
+          <label class="equipment-only">
+            设备外型尺寸
+            <textarea id="itemDimensions" class="text-input-zh" lang="zh-CN" spellcheck="false" autocomplete="off" placeholder="正常尺寸、展开尺寸、包装尺寸等"></textarea>
+          </label>
+          <label class="equipment-only">
+            设备基本参数
+            <textarea id="itemParameters" class="text-input-zh" lang="zh-CN" spellcheck="false" autocomplete="off"></textarea>
+          </label>
+          <label class="equipment-only">
+            设备应用场景
+            <textarea id="itemApplication" class="text-input-zh" lang="zh-CN" spellcheck="false" autocomplete="off"></textarea>
+          </label>
+          <label class="equipment-only">
+            主要卖点
+            <textarea id="itemSellingPoints" class="text-input-zh" lang="zh-CN" spellcheck="false" autocomplete="off"></textarea>
+          </label>
+          <label>
+            备注
+            <textarea id="itemRemark" class="text-input-zh" lang="zh-CN" spellcheck="false" autocomplete="off"></textarea>
+          </label>
+        </div>
+
+        <div id="itemCompletenessPanel" class="completeness-panel hidden"></div>
+
+        <div class="image-picker">
+          <div class="image-preview-wrap">
+            <img id="imagePreview" alt="" />
+            <button id="removeImageBtn" type="button" class="image-remove-btn" aria-label="删除参考图片">×</button>
+          </div>
+          <input id="itemImagePath" type="hidden" />
+          <div class="image-picker-actions">
+            <button id="pickImageBtn" type="button" class="ghost-btn">选择参考图片</button>
+            <span>建议使用清晰正面图，删除只会移除当前商品引用。</span>
+          </div>
+        </div>
+
+        <div class="dialog-actions">
+          <button id="deleteItemBtn" type="button" class="danger-btn">删除</button>
+          <div>
+            <button type="button" id="cancelFormBtn" class="ghost-btn">取消</button>
+            <button type="submit" class="primary-btn">保存</button>
+          </div>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="customDialog">
+      <form id="customForm" method="dialog">
+        <div class="dialog-head">
+          <h2>异型临时修改</h2>
+          <button type="button" id="closeCustomDialogBtn" class="icon-btn">×</button>
+        </div>
+        <input id="customItemId" type="hidden" />
+        <p id="customItemName" class="dialog-note"></p>
+        <div class="form-grid custom-variant-grid">
+          <label>
+            设备/型号尺寸
+            <textarea id="customSize" class="text-input-zh" lang="zh-CN" spellcheck="false" autocomplete="off"></textarea>
+          </label>
+          <label>
+            设备基本参数
+            <textarea id="customBasicParams" class="text-input-zh" lang="zh-CN" spellcheck="false" autocomplete="off"></textarea>
+          </label>
+        </div>
+        <label class="custom-requirement-label">
+          备注/客户特殊要求
+          <textarea id="customRequirement" placeholder="例如：支架304、锅体加厚、现场尺寸调整"></textarea>
+        </label>
+        <div class="quick-requirements">
+          <button type="button" data-requirement="支架材质改为304不锈钢">支架304</button>
+          <button type="button" data-requirement="锅体板材加厚">锅体加厚</button>
+          <button type="button" data-requirement="按客户现场尺寸调整外形尺寸">尺寸调整</button>
+        </div>
+        <div class="dialog-actions">
+          <span></span>
+          <div>
+            <button type="button" id="cancelCustomBtn" class="ghost-btn">取消</button>
+            <button type="submit" class="primary-btn">加入清单</button>
+          </div>
+        </div>
+      </form>
+    </dialog>
+
+    <div id="productDetailOverlay" class="product-detail-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="productDetailTitle">
+      <div class="product-detail-panel">
+        <button type="button" id="closeProductDetailBtn" class="icon-btn product-detail-close" aria-label="关闭">×</button>
+        <div id="productDetailContent"></div>
+      </div>
+    </div>
+
+    <dialog id="recentFilesDialog" class="recent-dialog">
+      <div class="dialog-head recent-head">
+        <div>
+          <h2>最近文件</h2>
+          <p>最近生成的合同和报价单</p>
+        </div>
+        <button type="button" id="closeRecentFilesBtn" class="icon-btn">×</button>
+      </div>
+      <div id="recentFileTypeTabs" class="recent-file-tabs" role="tablist" aria-label="文件类型">
+        <button type="button" class="active" data-recent-type="contract" role="tab" aria-selected="true">合同</button>
+        <button type="button" data-recent-type="quote" role="tab" aria-selected="false">报价单</button>
+      </div>
+      <div id="recentFilesList" class="recent-files-list empty">暂无最近文件</div>
+    </dialog>
+
+    <dialog id="inventoryDialog" class="inventory-dialog">
+      <div class="dialog-head inventory-head">
+        <div>
+          <h2>导入库存</h2>
+          <p>选择仓库库存表格，后续按映射关系匹配到产品库存。</p>
+        </div>
+        <button type="button" id="closeInventoryDialogBtn" class="icon-btn">×</button>
+      </div>
+      <div class="inventory-import-body">
+        <div id="inventoryDropZone" class="inventory-drop-zone">
+          <button type="button" id="pickInventoryFileBtn" class="primary-btn">选择库存表格</button>
+          <strong>或把库存 Excel 直接拖到这里</strong>
+          <div id="inventoryFileInfo" class="inventory-file-info">暂未选择文件</div>
+        </div>
+        <div class="inventory-import-note">
+          先核对可写入和跳过项，确认无误后再写入库存；未确认映射的项目不会自动录入。
+        </div>
+        <div id="inventoryPreviewPanel" class="inventory-preview-panel hidden">
+          <div id="inventoryPreviewSummary" class="inventory-preview-summary"></div>
+          <div class="inventory-preview-grid">
+            <section>
+              <h3>可写入库存</h3>
+              <div id="inventoryMatchedList" class="inventory-preview-list"></div>
+            </section>
+            <section>
+              <h3>已跳过 / 待确认</h3>
+              <div id="inventorySkippedList" class="inventory-preview-list muted-list"></div>
+            </section>
+          </div>
+        </div>
+      </div>
+      <div class="inventory-actions">
+        <button type="button" id="cancelInventoryDialogBtn" class="ghost-btn">关闭</button>
+        <button type="button" id="applyInventoryImportBtn" class="primary-btn" disabled>等待映射规则</button>
+      </div>
+    </dialog>
+
+    <div id="materialContextMenu" class="material-context-menu hidden" role="menu" aria-label="资料操作">
+      <button type="button" data-material-action="attach" role="menuitem">添加资料</button>
+      <button type="button" data-material-action="replace-image" role="menuitem" hidden>替换当前图</button>
+      <button type="button" data-material-action="remove" class="danger-menu-item" role="menuitem">删除资料</button>
+    </div>
+
+    <dialog id="releaseNotesDialog" class="release-notes-dialog">
+      <div class="dialog-head release-notes-head">
+        <div>
+          <h2>本次更新内容</h2>
+          <p id="releaseNotesSubtitle">已更新到新版本</p>
+        </div>
+        <button type="button" id="closeReleaseNotesBtn" class="icon-btn">×</button>
+      </div>
+      <div id="releaseNotesContent" class="release-notes-content"></div>
+      <div class="release-notes-actions">
+        <button type="button" id="ackReleaseNotesBtn" class="primary-btn">知道了</button>
+      </div>
+    </dialog>
+
+    <dialog id="appConfirmDialog" class="app-confirm-dialog" aria-labelledby="appConfirmTitle" aria-describedby="appConfirmMessage">
+      <div class="app-confirm-accent"></div>
+      <div class="app-confirm-body">
+        <div class="app-confirm-icon" aria-hidden="true">!</div>
+        <div class="app-confirm-copy">
+          <h2 id="appConfirmTitle">确认操作</h2>
+          <p id="appConfirmMessage"></p>
+          <ul id="appConfirmDetails" class="app-confirm-details hidden"></ul>
+        </div>
+      </div>
+      <div class="app-confirm-actions">
+        <button type="button" id="appConfirmCancelBtn" class="ghost-btn">取消</button>
+        <button type="button" id="appConfirmConfirmBtn" class="primary-btn">确认</button>
+      </div>
+    </dialog>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

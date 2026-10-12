@@ -1,0 +1,19 @@
+{
+  "name": "guolong-sales-tool-open-source",
+  "version": "2.19.0",
+  "description": "Local offline product card sales and contract generator.",
+  "main": "main.js",
+  "dependencies": {
+    "exceljs": "^4.4.0",
+    "pinyin-pro": "^3.28.1",
+    "sql.js": "^1.12.0",
+    "xlsx": "^0.18.5"
+  },
+  "scripts": {
+    "start": "electron .",
+    "test": "node scripts/test-open-source.js && node scripts/test-data-refresh.js"
+  },
+  "devDependencies": {
+    "electron": "35.7.5"
+  }
+}

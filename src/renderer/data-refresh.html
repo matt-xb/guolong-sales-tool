@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:">
+  <title>刷新产品资料</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    body { background: #f2f7f8; padding: 28px 32px; overflow: hidden; }
+    header { display: flex; align-items: center; gap: 14px; margin-bottom: 22px; }
+    .refresh-icon { width: 46px; height: 46px; object-fit: contain; }
+    h1 { font-size: 22px; margin: 0 0 5px; }
+    header p { color: var(--muted); font-size: 13px; margin: 0; }
+    ol { display: flex; gap: 8px; padding: 0; margin: 0 0 24px; list-style: none; }
+    li { flex: 1; border-top: 3px solid var(--line); padding-top: 8px; color: var(--muted); font-size: 12px; white-space: nowrap; }
+    li.active { border-color: var(--brand-blue); color: var(--brand-blue-dark); font-weight: 700; }
+    li.done { border-color: var(--brand-teal); color: var(--brand-teal); }
+    h2 { font-size: 17px; margin: 0 0 14px; }
+    progress { width: 100%; height: 12px; border: 0; border-radius: 5px; overflow: hidden; accent-color: var(--brand-teal); }
+    progress::-webkit-progress-bar { background: #dce8eb; border-radius: 5px; }
+    progress::-webkit-progress-value { background: var(--brand-teal); border-radius: 5px; }
+    .details { display: flex; gap: 12px; justify-content: space-between; margin-top: 10px; min-height: 24px; color: var(--muted); font-size: 13px; }
+    #detail { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #count { white-space: nowrap; }
+    #error { color: var(--danger); font-size: 13px; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 120px; overflow-y: auto; margin: 8px 0; }
+    footer { border-top: 1px solid var(--line); padding-top: 16px; margin-top: 18px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    footer span { font-size: 12px; color: var(--muted); }
+    button[hidden], p[hidden] { display: none; }
+  </style>
+</head>
+<body>
+  <header><img class="refresh-icon" src="../../build/icon.ico" alt="国龙"><div><h1>刷新产品资料</h1><p>国龙食品机械产品资料库</p></div></header>
+  <ol aria-label="刷新步骤"><li>连接</li><li>数据库</li><li>图片</li><li>资料文件</li><li>校验</li><li>应用</li><li>完成</li></ol>
+  <h2 id="status" aria-live="polite">正在连接共享目录…</h2>
+  <progress aria-label="当前步骤进度"></progress>
+  <div class="details"><span id="detail">准备同步最新资料</span><span id="count"></span></div>
+  <p id="error" role="alert" hidden></p>
+  <footer><span>合同、报价单和最近文件保留在本机</span><button id="return" class="primary-btn" hidden>返回软件</button></footer>
+  <script src="data-refresh-view.js"></script>
+</body>
+</html>
