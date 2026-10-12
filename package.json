@@ -11,7 +11,8 @@
   },
   "scripts": {
     "start": "electron .",
-    "test": "node scripts/test-open-source.js && node scripts/test-data-refresh.js"
+    "test": "node scripts/test-open-source.js && node scripts/test-data-refresh.js",
+    "package": "node scripts/package-public.js"
   },
   "devDependencies": {
     "electron": "35.7.5"

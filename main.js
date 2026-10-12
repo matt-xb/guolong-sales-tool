@@ -109,7 +109,7 @@ if (gotSingleInstanceLock) {
   app.on('second-instance', focusMainWindow);
 
   app.whenReady().then(() => {
-    app.setAppUserModelId('com.guolong.sales-tool');
+    app.setAppUserModelId('com.guolong.sales-tool.open-source');
     const dirs = ensureAppDirs();
     dbPromise = initDatabase(path.join(dirs.baseDir, 'sales.sqlite'), getSeedDatabasePath())
       .then((database) => {

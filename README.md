@@ -4,6 +4,12 @@
 
 支持产品与配件录入、搜索、资料管理、库存导入，以及用 Excel 模板生成合同和报价单。
 
+## 下载公开版
+
+[GitHub Releases](https://github.com/matt-xb/guolong-sales-tool/releases) 提供 Windows x64 便携 ZIP。解压到自己的可写目录，运行 `GuolongSalesTool.exe`，无需安装 Node.js。首次运行创建空数据库，程序包不含公司产品或业务资料。
+
+数据库、图片和导出文件保存在解压目录，升级前备份自己的数据，不要将公开版解压覆盖公司版目录。首次发行标为预发布，尚未完成干净电脑和界面人工验收；程序未签名。
+
 ## 运行
 
 安装 Node.js 后执行：
@@ -20,6 +26,8 @@ npm test
 ```
 
 测试只使用临时空数据库和虚构产品，不依赖公司产品库。
+
+在 Windows 上运行 `npm run package` 生成 `dist/guolong-sales-tool-v2.19.0-windows-x64`；打包脚本只复制公开源码和清理后的模板，并在独立目录安装生产依赖、运行空库与模板导出检查。输出目录已存在时会停止，防止覆盖其中的使用数据。
 
 ## 公开范围
 
