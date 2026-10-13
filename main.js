@@ -7,6 +7,8 @@ const { initDatabase } = require('./src/main/database');
 const { buildInventoryPreview } = require('./src/main/inventory-import');
 const { productImagePaths, productImageFolder } = require('./src/shared/product-images');
 const { refreshData } = require('./src/main/data-refresh');
+const { createOperationLog } = require('./src/main/operation-log');
+const { randomUUID } = require('node:crypto');
 const {
   MATERIAL_DEFINITIONS,
   getMaterialDefinition,
@@ -41,6 +43,11 @@ const CONTRACT_TEMPLATE_OPTIONS = {
     label: '厨房设备厂（普票）'
   }
 };
+
+const operationLog = createOperationLog(path.join(getDataDir(), 'local-data', 'logs'));
+function handleOperation(channel, handler) {
+  ipcMain.handle(channel, (...args) => operationLog.run(channel, () => handler(...args)));
+}
 
 let mainWindow;
 let refreshWindow;
@@ -111,10 +118,15 @@ if (gotSingleInstanceLock) {
   app.whenReady().then(() => {
     app.setAppUserModelId('com.guolong.sales-tool.open-source');
     const dirs = ensureAppDirs();
+    operationLog.write('startup', { version: app.getVersion() });
     dbPromise = initDatabase(path.join(dirs.baseDir, 'sales.sqlite'), getSeedDatabasePath())
       .then((database) => {
         db = database;
+        operationLog.write('database.init', { result: 'ready' });
         return database;
+      }).catch((error) => {
+        operationLog.write('database.init', { result: 'failed', reason: error.name });
+        throw error;
       });
     createWindow();
 
@@ -288,11 +300,11 @@ ipcMain.handle('items:get', async (_event, id) => {
   const dirs = ensureAppDirs();
   return decorateItemFileStatus((await getDatabase()).getItem(id), dirs.baseDir);
 });
-ipcMain.handle('items:save', async (_event, item) => {
+handleOperation('items:save', async (_event, item) => {
   const dirs = ensureAppDirs();
   return decorateItemFileStatus((await getDatabase()).saveItem(item), dirs.baseDir);
 });
-ipcMain.handle('items:delete', async (_event, id) => (await getDatabase()).deleteItem(id));
+handleOperation('items:delete', async (_event, id) => (await getDatabase()).deleteItem(id));
 
 ipcMain.handle('recent:list', async () => readRecentFiles());
 ipcMain.handle('customer-code:resolve', async (_event, customerName) => (
@@ -310,7 +322,7 @@ ipcMain.handle('recent:reveal', async (_event, filePath) => {
   return true;
 });
 
-ipcMain.handle('after-sales-video:open', async () => {
+handleOperation('after-sales-video:open', async () => {
   const scriptPath = getAfterSalesVideoScriptPath();
   if (!scriptPath) {
     throw new Error('售后视频库启动失败，请检查网络或视频库服务');
@@ -323,7 +335,7 @@ ipcMain.handle('after-sales-video:open', async () => {
 
 ipcMain.handle('update:check', async () => checkLanUpdate());
 
-ipcMain.handle('update:start', async () => {
+handleOperation('update:start', async () => {
   const update = await checkLanUpdate();
   if (!update.available) {
     throw new Error(update.message || '当前已经是最新版本。');
@@ -337,7 +349,7 @@ ipcMain.handle('update:start', async () => {
   return true;
 });
 
-ipcMain.handle('data-refresh:start', async () => {
+handleOperation('data-refresh:start', async () => {
   await startDataRefresh();
   return true;
 });
@@ -396,7 +408,7 @@ ipcMain.handle('inventory:preview', async (_event, filePath) => {
   return buildInventoryPreview(filePath, items);
 });
 
-ipcMain.handle('inventory:apply', async (_event, filePath) => {
+handleOperation('inventory:apply', async (_event, filePath) => {
   const database = await getDatabase();
   const items = database.listItems({ type: 'equipment' });
   const preview = buildInventoryPreview(filePath, items);
@@ -407,12 +419,12 @@ ipcMain.handle('inventory:apply', async (_event, filePath) => {
   };
 });
 
-ipcMain.handle('materials:copy', async (_event, relativePath) => copyMaterialFile(relativePath));
-ipcMain.handle('materials:attach', async (_event, payload) => attachMaterialFile(payload));
-ipcMain.handle('materials:remove', async (_event, payload) => removeMaterialFile(payload));
-ipcMain.handle('images:copy-product', async (_event, itemId, imageIndex = 0) => copyProductImage(itemId, imageIndex));
-ipcMain.handle('images:add-product', async (_event, itemId) => importProductImages(itemId, 'add'));
-ipcMain.handle('images:replace-product', async (_event, itemId, imagePath) => importProductImages(itemId, 'replace', imagePath));
+handleOperation('materials:copy', async (_event, relativePath) => copyMaterialFile(relativePath));
+handleOperation('materials:attach', async (_event, payload) => attachMaterialFile(payload));
+handleOperation('materials:remove', async (_event, payload) => removeMaterialFile(payload));
+handleOperation('images:copy-product', async (_event, itemId, imageIndex = 0) => copyProductImage(itemId, imageIndex));
+handleOperation('images:add-product', async (_event, itemId) => importProductImages(itemId, 'add'));
+handleOperation('images:replace-product', async (_event, itemId, imagePath) => importProductImages(itemId, 'replace', imagePath));
 async function importProductImages(itemId, action, imagePath) {
   const id = normalizeItemId(itemId);
   const database = await getDatabase();
@@ -443,7 +455,7 @@ async function importProductImages(itemId, action, imagePath) {
     throw error;
   }
 }
-ipcMain.handle('images:remove-product', async (_event, itemId, imagePath) => {
+handleOperation('images:remove-product', async (_event, itemId, imagePath) => {
   const database = await getDatabase();
   const id = normalizeItemId(itemId);
   return decorateItemFileStatus(database.updateProductImages(id, 'remove', imagePath), getDataDir());
@@ -943,7 +955,7 @@ async function runLanUpdateScript(scriptPath, sourcePath) {
 }
 
 async function startDataRefresh() {
-  if (refreshWindow) { refreshWindow.focus(); return; }
+  if (refreshWindow) { operationLog.write('data-refresh', { result: 'skipped', reason: 'already_running' }); refreshWindow.focus(); return; }
   const source = getLanUpdateSourcePath();
   if (!source) throw new Error('资料源路径为空。');
   const target = getDataDir();
@@ -968,7 +980,17 @@ async function startDataRefresh() {
   try { await progress.loadFile(path.join(__dirname, 'src/renderer/data-refresh.html')); }
   catch (error) { refreshBusy = false; progress.destroy(); throw error; }
   mainWindow.close();
-  const report = (state) => { if (!progress.isDestroyed()) progress.webContents.send('data-refresh:progress', state); };
+  const id = randomUUID();
+  const started = Date.now();
+  let stage = -1;
+  operationLog.write('data-refresh', { id, result: 'started' });
+  const report = (state) => {
+    if (state.step !== undefined && state.step !== stage) {
+      stage = state.step;
+      operationLog.write('data-refresh', { id, stage, result: 'progress' });
+    }
+    if (!progress.isDestroyed()) progress.webContents.send('data-refresh:progress', state);
+  };
   (async () => {
     try {
       report({ step: 0, detail: '正在建立局域网连接…' });
@@ -979,12 +1001,15 @@ async function startDataRefresh() {
       report({ step: 6, current: 1, total: 1, detail: '最新数据库、库存、图片和资料已就绪' });
       await new Promise((resolve) => setTimeout(resolve, 800));
       succeeded = true;
+      operationLog.write('data-refresh', { id, result: 'applied', elapsedMs: Date.now() - started });
       refreshBusy = false;
       app.relaunch();
+      operationLog.write('data-refresh', { id, result: 'relaunch_requested', elapsedMs: Date.now() - started });
       app.quit();
     } catch (error) {
       refreshBusy = false;
       recoveryRequired = Boolean(error.recoveryRequired || applied);
+      operationLog.write('data-refresh', { id, stage, result: 'failed', reason: recoveryRequired ? 'recovery_required' : error.name, elapsedMs: Date.now() - started });
       progress.setSize(660, 560);
       report({ error: applied ? '资料已更新，但自动重启失败，请关闭后重新打开软件。' : error.message || '资料刷新失败，请检查共享连接。', recoveryRequired });
     }
@@ -1028,12 +1053,12 @@ function getCmdExePath() {
   return fs.existsSync(cmdPath) ? cmdPath : 'cmd.exe';
 }
 
-ipcMain.handle('contract:create', async (_event, payload) => {
+handleOperation('contract:create', async (_event, payload) => {
   const dirs = ensureAppDirs();
   assertCustomerCodeAvailable(payload.customerName, payload.customerCode);
   const templatePath = getContractTemplatePath(payload.invoiceType);
   if (!fs.existsSync(templatePath)) {
-    throw new Error('未找到合同模板，请确认 templates 目录下的合同模板存在。');
+    throw Object.assign(new Error('未找到合同模板，请确认 templates 目录下的合同模板存在。'), { code: 'TEMPLATE_MISSING' });
   }
 
   const outputPath = buildUniqueOutputPath(dirs.contractOutputDir, buildContractFileName(payload), '.xlsx');
@@ -1054,12 +1079,12 @@ ipcMain.handle('contract:create', async (_event, payload) => {
   return outputPath;
 });
 
-ipcMain.handle('quote:create', async (_event, payload) => {
+handleOperation('quote:create', async (_event, payload) => {
   const dirs = ensureAppDirs();
   const isEnglishQuote = payload.language === 'en';
   const templatePath = getQuoteTemplatePath(isEnglishQuote);
   if (!fs.existsSync(templatePath)) {
-    throw new Error(`未找到报价单模板，请确认 templates/${path.basename(templatePath)} 存在。`);
+    throw Object.assign(new Error(`未找到报价单模板，请确认 templates/${path.basename(templatePath)} 存在。`), { code: 'TEMPLATE_MISSING' });
   }
 
   const outputPath = buildUniqueOutputPath(
