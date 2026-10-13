@@ -389,6 +389,7 @@ const PHRASE_EN = [
   ['复制失败', 'Copy failed'],
   ['证书', 'Certificate'],
   ['生产许可', 'Production License'],
+  ['能效检测报告', 'Energy Efficiency Test Report'],
   ['检测报告', 'Test Report'],
   ['能效标识', 'Energy Label'],
   ['三视图', 'Three-view Drawing'],
@@ -467,6 +468,7 @@ const DOCUMENT_ACTIONS = [
   { key: 'ccc', label: (item) => getCertificateLabel(item) },
   { key: 'report', label: '检测报告' },
   { key: 'energy', label: '能效标识' },
+  { key: 'energyReport', label: '能效检测报告' },
   { key: 'view3', label: '三视图' },
   { key: 'manual', label: '说明书' }
 ];
@@ -1189,6 +1191,7 @@ function translateDocumentLabel(label) {
     '生产许可': 'Production License',
     '检测报告': 'Test Report',
     '能效标识': 'Energy Label',
+    '能效检测报告': 'Energy Efficiency Test Report',
     '三视图': 'Three-view Drawing',
     '说明书': 'Manual'
   };
@@ -1521,7 +1524,9 @@ function detailMeta(label, value) {
 
 function buildDocumentActionsHtml(item) {
   const documents = item.documents || {};
-  const buttons = DOCUMENT_ACTIONS.map((action) => {
+  const buttons = DOCUMENT_ACTIONS
+    .filter((action) => action.key !== 'energyReport' || (item.type === 'equipment' && isCccMarkedItem(item)))
+    .map((action) => {
     const label = translateDocumentLabel(typeof action.label === 'function' ? action.label(item) : action.label);
     const materialPath = String(documents[action.key] || '').trim();
     const disabled = !materialPath;
@@ -4742,6 +4747,7 @@ function getMissingDocumentInfo(item) {
   return [
     ['ccc', getCertificateLabel(item)],
     ['report', '检测报告'],
+    ...(isCccMarkedItem(item) ? [['energyReport', '能效检测报告']] : []),
     ['view3', '三视图'],
     ['manual', '说明书']
   ]

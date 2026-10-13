@@ -1,6 +1,6 @@
 {
   "name": "guolong-sales-tool-open-source",
-  "version": "2.19.0",
+  "version": "2.20.0",
   "description": "Local offline product card sales and contract generator.",
   "main": "main.js",
   "dependencies": {

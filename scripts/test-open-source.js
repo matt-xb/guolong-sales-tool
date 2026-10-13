@@ -6,6 +6,7 @@ const ExcelJS = require('exceljs');
 const { initDatabase } = require('../src/main/database');
 const { createContract } = require('../src/main/contractExporter');
 const { createQuote } = require('../src/main/quoteExporter');
+const { validateMaterialExtension, isManagedImportedMaterialPath } = require('../src/main/material-files');
 
 (async () => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'sales-open-source-'));
@@ -15,6 +16,11 @@ const { createQuote } = require('../src/main/quoteExporter');
     database.saveItem({ type: 'equipment', name: 'Test Product', model: 'TEST', price: 1, category: 'Test' });
     const item = database.listItems({ keyword: 'Test Product' })[0];
     assert(item && item.price === 1);
+    assert.strictEqual(validateMaterialExtension('energyReport', 'test.PDF'), 'pdf');
+    assert.throws(() => validateMaterialExtension('energyReport', 'test.docx'), /不支持/);
+    assert(isManagedImportedMaterialPath('materials/user-imports/energyReport/test.pdf'));
+    assert.strictEqual(database.updateItemDocument(item.id, 'energyReport', 'materials/energy-reports/test.pdf').documents.energyReport, 'materials/energy-reports/test.pdf');
+    assert.deepStrictEqual(database.updateItemDocument(item.id, 'energyReport', '').documents, {});
     const payload = { customerName: 'Test Buyer', items: [{ ...item, quantity: 2, qty: 2 }], baseDir: directory };
     for (const name of ['contract-template.xlsx', 'contract-template-normal.xlsx', 'quote-template.xlsx', 'quote-template （English）.xlsx']) {
       const outputPath = path.join(directory, name);

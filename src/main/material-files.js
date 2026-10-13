@@ -4,6 +4,7 @@ const MATERIAL_DEFINITIONS = {
   ccc: { label: '证书', extensions: ['pdf', 'png', 'jpg', 'jpeg', 'webp', 'bmp'] },
   report: { label: '检测报告', extensions: ['pdf', 'png', 'jpg', 'jpeg', 'webp', 'bmp'] },
   energy: { label: '能效标识', extensions: ['png', 'jpg', 'jpeg', 'webp', 'bmp', 'pdf'] },
+  energyReport: { label: '能效检测报告', extensions: ['pdf', 'png', 'jpg', 'jpeg', 'webp', 'bmp'] },
   view3: { label: '三视图', extensions: ['pdf', 'png', 'jpg', 'jpeg', 'webp', 'bmp'] },
   manual: { label: '说明书', extensions: ['doc', 'docx', 'pdf'] }
 };
@@ -35,7 +36,7 @@ function buildImportedMaterialRelativePath(key, sourcePath, stamp = Date.now()) 
 }
 
 function isManagedImportedMaterialPath(relativePath) {
-  return /^materials\/user-imports\/(ccc|report|energy|view3|manual)\/[^/]+$/i.test(
+  return /^materials\/user-imports\/(ccc|report|energy|energyReport|view3|manual)\/[^/]+$/i.test(
     String(relativePath || '').replace(/\\/g, '/')
   );
 }
