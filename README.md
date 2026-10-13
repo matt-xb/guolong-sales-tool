@@ -1,6 +1,6 @@
 # 国龙销售工具 · 公开源码版
 
-基于 Electron、SQLite/SQL.js 和 ExcelJS 的本地销售工具，公开源码已同步公司版 2.20.0 的资料按钮功能。
+基于 Electron、SQLite/SQL.js 和 ExcelJS 的本地销售工具，公司版和公开版共用这一份程序源码，当前功能版本为 2.20.0。
 
 支持产品与配件录入、搜索、资料管理、库存导入，以及用 Excel 模板生成合同和报价单。
 
@@ -29,7 +29,21 @@ npm test
 
 测试只使用临时空数据库和虚构产品，不依赖公司产品库。
 
-在 Windows 上运行 `npm run package` 生成对应版本的 `dist/guolong-sales-tool-v<version>-windows-x64`；打包脚本只复制公开源码和清理后的模板，并在独立目录安装生产依赖、运行空库与模板导出检查。输出目录已存在时会停止，防止覆盖其中的使用数据。
+在 Windows 上运行 `npm run package` 生成对应版本的 `dist/guolong-sales-v<version>-public-windows-x64`；打包脚本只复制公开源码和清理后的模板，并在独立目录安装生产依赖、运行空库与模板导出检查。输出目录已存在时会停止，防止覆盖其中的使用数据。
+
+## 同一源码构建公司版
+
+默认 `npm run package` 只构建公开空库版。公司版使用私有输入目录，输出必须是全新目录：
+
+```powershell
+npm run package -- --company-content <private-distribution> --data-root <private-catalog> --output <new-output>
+```
+
+私有分发目录提供 `edition.json`（仅 updateSource、shareUser、videoScript）、四份 `templates/*.xlsx`，以及可选的 `branding`、`tools`、`release-notes.json`。私有资料目录提供 `data/seed-sales.sqlite`、`images`、`materials`；不传 `--data-root` 时使用私有分发目录。密码不接受 JSON 配置，只读取 `SALES_SHARE_PASSWORD`，公司版兼容 `GUOLONG_SHARE_PASS`。
+
+公司包使用原应用名和标识，公开包保留独立身份。两种包的业务源码完全相同；公司包在打包时载入私有模板和品牌资源。运行代码位于 `resources/app`，不再依赖旧私有源码打 ASAR 的流程。公司包不得上传到公开 Release。
+
+本次只验证迁移构建，未升级任何现用程序或发布新 Release。正式分发仍需正常递增版本并验收升级。
 
 ## 公开范围
 
@@ -52,7 +66,7 @@ npm test
 
 ## 维护
 
-后续仅同步程序源码、通用模板和测试。修改后运行相关检查并通过 Git 提交记录版本；业务资料、数据库和历史备份始终留在私有侧。
+程序功能在本仓库维护一次；公司分发仓库通过固定提交的 `source` 子模块引用它，不再维护程序副本。修改后运行相关检查并通过 Git 提交记录版本；业务资料、数据库和历史备份始终留在私有侧。
 
 ## 许可
 

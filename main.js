@@ -18,20 +18,22 @@ const {
 } = require('./src/main/material-files');
 const { resolveUniqueCustomerCode } = require('./src/shared/customer-code');
 
+const edition = require('./package.json').salesEdition || {};
+
 const AFTER_SALES_VIDEO = {
   scriptName: 'open-after-sales-video.vbs',
-  fallbackScriptPath: process.env.SALES_VIDEO_SCRIPT || ''
+  fallbackScriptPath: process.env.SALES_VIDEO_SCRIPT || edition.videoScript || ''
 };
 
 const LAN_UPDATE = {
   scriptName: 'update.bat',
   sourceConfigName: 'update-source.txt',
-  defaultSourcePath: process.env.SALES_UPDATE_SOURCE || '',
+  defaultSourcePath: process.env.SALES_UPDATE_SOURCE || edition.updateSource || '',
   versionFileName: 'release-version.json',
   releaseNotesName: 'release-notes.json',
   releaseNotesStateName: 'release-notes-state.json',
-  shareUser: process.env.SALES_SHARE_USER || '',
-  sharePass: process.env.SALES_SHARE_PASSWORD || ''
+  shareUser: process.env.SALES_SHARE_USER || edition.shareUser || '',
+  sharePass: process.env.SALES_SHARE_PASSWORD || (edition.company ? process.env.GUOLONG_SHARE_PASS : '') || ''
 };
 const CONTRACT_TEMPLATE_OPTIONS = {
   special_food_machinery: {
@@ -116,7 +118,7 @@ if (gotSingleInstanceLock) {
   app.on('second-instance', focusMainWindow);
 
   app.whenReady().then(() => {
-    app.setAppUserModelId('com.guolong.sales-tool.open-source');
+    app.setAppUserModelId(edition.company ? 'com.guolong.sales-tool' : 'com.guolong.sales-tool.open-source');
     const dirs = ensureAppDirs();
     operationLog.write('startup', { version: app.getVersion() });
     dbPromise = initDatabase(path.join(dirs.baseDir, 'sales.sqlite'), getSeedDatabasePath())
@@ -1043,7 +1045,7 @@ function buildUpdateSourceAccessMessage(sourcePath) {
     '无法访问更新源。',
     `更新源：${sourcePath}`,
     '请先在这台电脑的资源管理器地址栏打开上面的路径。',
-    '如果资源管理器也打不开，请检查：更新源电脑是否开机、两台电脑是否在同一网络、网络发现和文件共享是否开启、防火墙是否允许文件和打印机共享、电脑名 PC-202502211303 是否能被同事电脑解析。'
+    '如果资源管理器也打不开，请检查：更新源电脑是否开机、两台电脑是否在同一网络、网络发现和文件共享是否开启、防火墙是否允许文件和打印机共享、更新源电脑名是否能被同事电脑解析。'
   ].join('\n');
 }
 

@@ -31,8 +31,8 @@ const { validateMaterialExtension, isManagedImportedMaterialPath } = require('..
       assert(workbook.worksheets.length && fs.statSync(outputPath).size > 0);
     }
     const main = fs.readFileSync(path.join(__dirname, '..', 'main.js'), 'utf8');
-    assert(main.includes("sharePass: process.env.SALES_SHARE_PASSWORD || ''"));
-    assert(main.includes("defaultSourcePath: process.env.SALES_UPDATE_SOURCE || ''"));
+    assert(main.includes("sharePass: process.env.SALES_SHARE_PASSWORD || (edition.company ? process.env.GUOLONG_SHARE_PASS : '') || ''"));
+    assert(main.includes("defaultSourcePath: process.env.SALES_UPDATE_SOURCE || edition.updateSource || ''"));
     assert(!fs.existsSync(path.join(__dirname, '..', 'data', 'seed-sales.sqlite')));
     console.log('Empty database, synthetic product, four template exports and private-data exclusions passed.');
   } finally {
