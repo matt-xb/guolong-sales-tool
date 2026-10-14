@@ -8,11 +8,21 @@ function productImageGroupKey(item) {
 }
 
 function productImageFolder(item = {}) {
-  const clean = (value) => String(value || '').trim().replace(/[<>:"/\\|?*\x00-\x1F]/g, '').replace(/[. ]+$/g, '').slice(0, 80);
+  const clean = (value) => {
+    const name = String(value || '').trim().replace(/[<>:"/\\|?*\x00-\x1F]/g, '').slice(0, 80).replace(/[. ]+$/g, '');
+    return /^(con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(name) ? `_${name}` : name;
+  };
   const type = item.type === 'equipment' ? 'equipment' : item.type === 'part' ? 'parts' : '';
   if (!type) return '';
   const category = clean(item.category);
-  return [type, category, ...(type === 'equipment' && category ? [clean(item.name)] : [])].filter(Boolean).join('/');
+  let name = String(item.name || '').trim();
+  if (type === 'parts') {
+    const family = name.match(/(控制器|接触器|减速机|热电偶|高温线|轴承|压力表|万向节|安全阀|空气滤芯|内胆|O型圈)$/i);
+    name = family ? family[1] : name
+      .replace(/^(?:\d+(?:\.\d+)?\s*(?:kW|mm|L|W|²)?\s*[/、]?\s*)+/i, '')
+      .replace(/\s*\d+(?:\.\d+)?\s*(?:kW|mm|W)(?:\/\d+(?:\.\d+)?\s*(?:kW|mm|W))*$/i, '');
+  }
+  return [type, ...(type === 'equipment' ? [category] : []), clean(name)].filter(Boolean).join('/');
 }
 
 function editProductImages(item, action, imagePath, added = []) {

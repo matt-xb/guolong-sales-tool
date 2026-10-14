@@ -304,6 +304,14 @@ ipcMain.handle('items:get', async (_event, id) => {
 });
 handleOperation('items:save', async (_event, item) => {
   const dirs = ensureAppDirs();
+  if (!String(item.name || '').trim()) throw new Error('请先填写商品名称。');
+  if (item.image_path) {
+    const source = resolveAppFilePath(item.image_path, dirs.baseDir);
+    if (fs.existsSync(source)) {
+      if (!getRelativePathIfInside(source, dirs.imageDir)) throw new Error('请选择图片库中的图片。');
+      item = { ...item, image_path: storeProductImage(source, dirs.imageDir, item) };
+    }
+  }
   return decorateItemFileStatus((await getDatabase()).saveItem(item), dirs.baseDir);
 });
 handleOperation('items:delete', async (_event, id) => (await getDatabase()).deleteItem(id));
@@ -362,6 +370,7 @@ ipcMain.on('data-refresh:return', (event) => {
 ipcMain.handle('data-refresh:get-result', async () => readDataRefreshResult());
 
 ipcMain.handle('images:pick', async (_event, options = {}) => {
+  if (!String(options.name || '').trim()) throw new Error('请先填写商品名称，再选择图片。');
   const dirs = ensureAppDirs();
   const defaultImageDir = resolveImagePickerDir(dirs.imageDir, options);
   const result = await dialog.showOpenDialog(mainWindow, {
@@ -375,17 +384,23 @@ ipcMain.handle('images:pick', async (_event, options = {}) => {
   if (result.canceled || result.filePaths.length === 0) return null;
 
   const source = result.filePaths[0];
-  const relativeExistingImage = getRelativePathIfInside(source, dirs.imageDir);
-  if (relativeExistingImage) {
-    return path.join('images', relativeExistingImage).replace(/\\/g, '/');
-  }
-
-  const fileName = `${Date.now()}-${Math.random().toString(16).slice(2)}.jpg`;
-  const target = path.join(defaultImageDir, fileName);
-  saveImageThumbnail(source, target);
-  const relativeTarget = getRelativePathIfInside(target, dirs.imageDir) || fileName;
-  return path.join('images', relativeTarget).replace(/\\/g, '/');
+  return storeProductImage(source, dirs.imageDir, options);
 });
+
+function storeProductImage(source, imageDir, item) {
+  const folder = resolveImagePickerDir(imageDir, item);
+  if (path.dirname(path.resolve(source)) === path.resolve(folder)) {
+    return path.join('images', path.relative(imageDir, source)).replace(/\\/g, '/');
+  }
+  const existing = getRelativePathIfInside(source, imageDir);
+  const extension = path.extname(source).toLowerCase();
+  if (!['.jpg', '.jpeg', '.png', '.webp', '.bmp'].includes(extension)) throw new Error('不支持的图片格式。');
+  if (nativeImage.createFromPath(source).isEmpty()) throw new Error('图片读取失败，请检查文件是否损坏。');
+  const target = path.join(folder, `${Date.now()}-${randomUUID()}${existing ? extension : '.jpg'}`);
+  if (existing) fs.copyFileSync(source, target);
+  else saveImageThumbnail(source, target);
+  return path.join('images', path.relative(imageDir, target)).replace(/\\/g, '/');
+}
 
 ipcMain.handle('inventory:pick-file', async () => {
   const result = await dialog.showOpenDialog(mainWindow, {

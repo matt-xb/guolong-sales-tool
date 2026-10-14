@@ -2032,14 +2032,23 @@ function updateFormByType() {
 }
 
 async function pickImage() {
-  const imagePath = await window.salesApi.pickImage({
-    type: el.itemType.value,
-    category: el.itemCategory.value,
-    name: el.itemName.value
-  });
-  if (!imagePath) return;
-  el.itemImagePath.value = imagePath;
-  updateImagePreview();
+  if (!el.itemName.value.trim()) {
+    showToast(uiText('请先填写商品名称，再选择图片。', 'Enter a product name before choosing an image.'), 'warning');
+    el.itemName.focus();
+    return;
+  }
+  try {
+    const imagePath = await window.salesApi.pickImage({
+      type: el.itemType.value,
+      category: el.itemCategory.value,
+      name: el.itemName.value
+    });
+    if (!imagePath) return;
+    el.itemImagePath.value = imagePath;
+    updateImagePreview();
+  } catch (error) {
+    showToast(error.message || uiText('图片读取失败。', 'Failed to read image.'), 'error');
+  }
 }
 
 function removeCurrentImage() {
@@ -2083,9 +2092,13 @@ async function saveItem(event) {
   event.preventDefault();
   if (!el.itemName.value.trim()) return;
   const item = readItemDraftFromForm();
-  await window.salesApi.saveItem(item);
-  el.itemDialog.close();
-  await loadItems();
+  try {
+    await window.salesApi.saveItem(item);
+    el.itemDialog.close();
+    await loadItems();
+  } catch (error) {
+    showToast(error.message || uiText('商品保存失败。', 'Failed to save product.'), 'error');
+  }
 }
 
 function readItemDraftFromForm() {
