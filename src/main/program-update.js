@@ -40,6 +40,7 @@ async function prepareProgramUpdate(source, target, exePath, pid, report = () =>
     };
     for (const p of job.deletes) await regularPath(target, p);
     await fs.copyFile(path.join(__dirname, 'apply-program-update.ps1'), path.join(jobDir, 'apply.ps1'));
+    await fs.copyFile(path.join(__dirname, 'start-program-update.vbs'), path.join(jobDir, 'start.vbs'));
     await fs.writeFile(path.join(jobDir, 'job.json'), JSON.stringify(job));
     return { jobDir, ...stats };
   } catch (error) { await fs.rm(jobDir, { recursive: true, force: true }); throw error; }

@@ -83,7 +83,7 @@ async function main() {
       const jobFile=path.join(prepared.jobDir,'job.json');
       const job=JSON.parse(await fs.readFile(jobFile,'utf8')); job.restart=false;
       await fs.writeFile(jobFile,JSON.stringify(job));
-      await run('powershell.exe',['-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',path.join(prepared.jobDir,'apply.ps1'),'-JobPath',jobFile],{windowsHide:true});
+      await run('wscript.exe',['//B','//NoLogo',path.join(prepared.jobDir,'start.vbs'),path.join(prepared.jobDir,'apply.ps1'),jobFile],{windowsHide:true});
       const result=JSON.parse((await fs.readFile(path.join(p.target,'local-data/program-update-result.json'),'utf8')).replace(/^\uFEFF/,''));
       assert.equal(result.ok,true,JSON.stringify(result));
       assert.equal(await fs.readFile(path.join(p.target,'resources/app/main.js'),'utf8'),'new code');
