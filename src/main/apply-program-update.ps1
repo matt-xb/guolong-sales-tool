@@ -36,6 +36,7 @@ try {
         $oldProcess = Get-Process -Id $job.pid -ErrorAction SilentlyContinue
         if ($oldProcess) { $oldProcess | Wait-Process -Timeout 60 }
     }
+    if (-not (Test-Path -LiteralPath (Join-Path $jobDir 'approved'))) { $job.restart=$false; return }
     # Check every staged replacement before changing the installed program.
     foreach ($file in $job.files) {
         $candidate = Safe-Path $stage $file.path
@@ -90,6 +91,7 @@ try {
     }
     @{ok=$false;recoveryRequired=$recoveryRequired;backup=$jobDir;message=$failure} | ConvertTo-Json | Set-Content -LiteralPath $resultPath -Encoding UTF8
 } finally {
+    if (-not (Test-Path -LiteralPath (Join-Path $jobDir 'approved'))) { $job.restart=$false }
     if (-not $recoveryRequired -and $job.restart) {
         $exe = [IO.Path]::GetFullPath($job.exePath)
         if ((Split-Path -Parent $exe) -eq $target -and (Test-Path -LiteralPath $exe -PathType Leaf)) { Start-Process -FilePath $exe -WorkingDirectory $target }

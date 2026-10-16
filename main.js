@@ -997,7 +997,14 @@ async function startDataRefresh(mode = 'data', updateSource) {
             if (finished) return;
             finished = true;
             clearInterval(timer); child.removeListener('exit', exited);
-            if (error) { if (child.pid) child.kill(); reject(error); }
+            if (!error) {
+              try { fs.writeFileSync(path.join(result.jobDir, 'approved'), 'approved'); }
+              catch (cause) { error = cause; }
+            }
+            if (error) {
+              if (child.pid) child.kill();
+              reject(error);
+            }
             else { child.unref(); resolve(); }
           };
           const exited = (code, signal) => finish(new Error(`安装步骤未能启动（${code ?? signal}），原程序尚未修改。请确认 Windows 脚本宿主未被禁用。`));

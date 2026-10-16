@@ -83,6 +83,7 @@ async function main() {
       const jobFile=path.join(prepared.jobDir,'job.json');
       const job=JSON.parse(await fs.readFile(jobFile,'utf8')); job.restart=false;
       await fs.writeFile(jobFile,JSON.stringify(job));
+      await write(path.join(prepared.jobDir,'approved'),'approved');
       await run('wscript.exe',['//B','//NoLogo',path.join(prepared.jobDir,'start.vbs'),path.join(prepared.jobDir,'apply.ps1'),jobFile],{windowsHide:true});
       const result=JSON.parse((await fs.readFile(path.join(p.target,'local-data/program-update-result.json'),'utf8')).replace(/^\uFEFF/,''));
       assert.equal(result.ok,true,JSON.stringify(result));
@@ -90,10 +91,17 @@ async function main() {
       await assert.rejects(fs.access(path.join(p.target,'obsolete.dll')));
       assert.equal(await fs.readFile(path.join(p.target,'local-data/recent-files.json'),'utf8'),'PRIVATE_RECENT');
       assert.equal(await fs.readFile(path.join(p.target,'update-source.txt'),'utf8'),'LOCAL_SOURCE');
+      const cancelled=await fixture('cancelled-program');
+      await write(path.join(cancelled.target,'resources/app/main.js'),'old code'); await publishManifest(cancelled.source);
+      const stopped=await prepareProgramUpdate(cancelled.source,cancelled.target,path.join(cancelled.target,'app.exe'),0);
+      await run('wscript.exe',['//B','//NoLogo',path.join(stopped.jobDir,'start.vbs'),path.join(stopped.jobDir,'apply.ps1'),path.join(stopped.jobDir,'job.json')],{windowsHide:true});
+      assert.equal(await fs.readFile(path.join(cancelled.target,'resources/app/main.js'),'utf8'),'old code');
+      await assert.rejects(fs.access(path.join(cancelled.target,'local-data/program-update-result.json')));
       const bad=await fixture('bad-program');
       await write(path.join(bad.target,'resources/app/main.js'),'old code'); await publishManifest(bad.source);
       const failed=await prepareProgramUpdate(bad.source,bad.target,path.join(bad.target,'app.exe'),0);
       const jf=path.join(failed.jobDir,'job.json'), j=JSON.parse(await fs.readFile(jf,'utf8')); j.restart=false;
+      await write(path.join(failed.jobDir,'approved'),'approved');
       await fs.writeFile(jf,JSON.stringify(j)); await write(path.join(j.stage,'resources/app/main.js'),'tampered stage');
       await run('powershell.exe',['-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',path.join(failed.jobDir,'apply.ps1'),'-JobPath',jf],{windowsHide:true});
       assert.equal(await fs.readFile(path.join(bad.target,'resources/app/main.js'),'utf8'),'old code');
@@ -104,6 +112,7 @@ async function main() {
       await publishManifest(rollback.source);
       const pending=await prepareProgramUpdate(rollback.source,rollback.target,path.join(rollback.target,'app.exe'),0);
       const rp=path.join(pending.jobDir,'job.json'), rj=JSON.parse(await fs.readFile(rp,'utf8')); rj.restart=false;
+      await write(path.join(pending.jobDir,'approved'),'approved');
       await fs.writeFile(rp,JSON.stringify(rj));
       const wrapper=path.join(root,'fail-install.ps1');
       await fs.writeFile(wrapper,`function Move-Item { param($LiteralPath,$Destination)\nif ($LiteralPath -like '*stage*main.js') { throw 'Simulated install failure' }; Microsoft.PowerShell.Management\\Move-Item -LiteralPath $LiteralPath -Destination $Destination\n}\n& '${path.join(pending.jobDir,'apply.ps1')}' -JobPath '${rp}'`);
