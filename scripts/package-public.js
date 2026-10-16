@@ -18,7 +18,7 @@ const output = path.resolve(options['--output'] || path.join(root, 'dist', `guol
 if (fs.existsSync(output)) throw new Error(`Output already exists: ${output}`);
 const runtime = path.join(path.dirname(require.resolve('electron/package.json')), 'dist');
 fs.cpSync(runtime, output, { recursive: true, filter: file => !['debug.log', 'default_app.asar'].includes(path.basename(file)) });
-fs.renameSync(path.join(output, 'electron.exe'), path.join(output, company ? '国龙销售工具.exe' : 'GuolongSalesTool.exe'));
+fs.renameSync(path.join(output, 'electron.exe'), path.join(output, company ? '国龙食品机械销售工具.exe' : 'GuolongSalesTool.exe'));
 const app = path.join(output, 'resources', 'app');
 stageApplication(root, output, company, options['--data-root'] ? path.resolve(options['--data-root']) : company);
 execFileSync(process.env.ComSpec || 'C:\Windows\System32\cmd.exe',

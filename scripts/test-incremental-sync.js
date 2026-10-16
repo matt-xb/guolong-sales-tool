@@ -27,6 +27,9 @@ async function main() {
   }
   try {
     const f = await fixture('data');
+    await write(path.join(f.source,'sync-manifest.json'),'damaged cache');
+    await publishManifest(f.source);
+    assert((await readManifest(f.source)).files.length > 0);
     const empty = new SQL.Database(); empty.run('CREATE TABLE items (id INTEGER)');
     await write(path.join(root,'empty.sqlite'),Buffer.from(empty.export())); empty.close();
     await validateDatabase(path.join(root,'empty.sqlite'),true);

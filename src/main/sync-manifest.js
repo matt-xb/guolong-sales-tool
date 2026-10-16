@@ -80,7 +80,9 @@ function validateManifest(manifest) {
   return manifest;
 }
 async function publishManifest(root) {
-  const manifest = await buildManifest(root, await readManifest(root));
+  let previous;
+  try { previous = await readManifest(root); } catch { /* Rebuild a damaged local cache; remote readers still reject it. */ }
+  const manifest = await buildManifest(root, previous);
   const file = path.join(root, MANIFEST), next = `${file}.tmp`;
   await fs.writeFile(next, JSON.stringify(manifest));
   await fs.rename(next, file);
