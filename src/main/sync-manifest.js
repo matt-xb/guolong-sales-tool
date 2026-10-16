@@ -108,11 +108,11 @@ function startManifestPublisher(root, onError = () => {}) {
   return () => { closed = true; clearTimeout(timer); watcher.close(); };
 }
 // Unchanged files are read from local disk; only changed bytes cross the share.
-async function stageFiles(source, target, stage, manifest, report = () => {}, stepFor = () => 1) {
+async function stageFiles(source, target, stage, manifest, report = () => {}, stepFor = () => 1, copyReused = true) {
   const stats = { downloaded: 0, downloadedBytes: 0, reused: 0 };
   const changed = [];
   const ordered = [...manifest.files].sort((a, b) => stepFor(a.path) - stepFor(b.path) || a.path.localeCompare(b.path));
-  for (const directory of manifest.directories) await fs.mkdir(path.join(stage, directory), { recursive: true });
+  if (copyReused) for (const directory of manifest.directories) await fs.mkdir(path.join(stage, directory), { recursive: true });
   for (let i = 0; i < manifest.files.length; i++) {
     const entry = ordered[i], relative = entry.path;
     const local = path.join(target, relative), remote = path.join(source, relative), destination = path.join(stage, relative);
@@ -121,10 +121,12 @@ async function stageFiles(source, target, stage, manifest, report = () => {}, st
     if (remoteInfo.size !== entry.size || remoteInfo.mtimeMs !== entry.mtimeMs || remoteInfo.ctimeMs !== entry.ctimeMs) throw new Error('文件内容与清单不一致，共享资料可能正在更新，请稍后重试。');
     let reuse = false;
     if (await regularPath(target, relative)) reuse = (await fs.stat(local)).size === entry.size && await digest(local) === entry.sha256;
-    await fs.mkdir(path.dirname(destination), { recursive: true });
     report({ step: stepFor(relative), current: i, total: manifest.files.length, detail: `${reuse ? '本机复用' : '下载'}：${path.basename(relative)}`, ...stats });
-    await fs.copyFile(reuse ? local : remote, destination);
-    if ((await fs.stat(destination)).size !== entry.size || await digest(destination) !== entry.sha256) throw new Error('文件内容与清单不一致，共享资料可能正在更新，请稍后重试。');
+    if (!reuse || copyReused) {
+      await fs.mkdir(path.dirname(destination), { recursive: true });
+      await fs.copyFile(reuse ? local : remote, destination);
+      if ((await fs.stat(destination)).size !== entry.size || await digest(destination) !== entry.sha256) throw new Error('文件内容与清单不一致，共享资料可能正在更新，请稍后重试。');
+    }
     if (reuse) stats.reused++; else { stats.downloaded++; stats.downloadedBytes += entry.size; changed.push(entry); }
     report({ step: stepFor(relative), current: i + 1, total: manifest.files.length, detail: `${reuse ? '已复用' : '已下载'}：${path.basename(relative)}`, ...stats });
   }

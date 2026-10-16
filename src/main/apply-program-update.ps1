@@ -30,6 +30,7 @@ function Safe-Path([string]$base, [string]$relative) {
     }
     return $resolved
 }
+Set-Content -LiteralPath (Join-Path $jobDir 'ready') -Value 'ready' -Encoding ASCII
 try {
     if ($job.pid -gt 0) {
         $oldProcess = Get-Process -Id $job.pid -ErrorAction SilentlyContinue

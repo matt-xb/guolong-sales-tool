@@ -988,13 +988,27 @@ async function startDataRefresh(mode = 'data', updateSource) {
       if (program) {
         const result = await prepareProgramUpdate(source, target, process.execPath, process.pid, report);
         report({ step: 5, detail: '下载与校验完成，正在安装并重新打开软件…', ...result });
-        stopManifestPublisher?.();
         const powershell = path.join(process.env.SystemRoot || 'C:\\Windows', 'System32/WindowsPowerShell/v1.0/powershell.exe');
         await new Promise((resolve, reject) => {
           const child = spawn(powershell, ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', path.join(result.jobDir, 'apply.ps1'), '-JobPath', path.join(result.jobDir, 'job.json')], { detached: true, stdio: 'ignore', windowsHide: true });
-          child.once('error', reject);
-          child.once('spawn', () => { child.unref(); resolve(); });
+          let timer, finished = false;
+          const finish = error => {
+            if (finished) return;
+            finished = true;
+            clearInterval(timer); child.removeListener('exit', exited);
+            if (error) { if (child.pid) child.kill(); reject(error); }
+            else { child.unref(); resolve(); }
+          };
+          const exited = () => finish(new Error('安装步骤未能启动，原程序尚未修改。'));
+          child.once('error', finish);
+          child.once('exit', exited);
+          const until = Date.now() + 15000;
+          timer = setInterval(() => {
+            if (fs.existsSync(path.join(result.jobDir, 'ready'))) finish();
+            else if (Date.now() > until) finish(new Error('等待安装步骤启动超时，原程序尚未修改。'));
+          }, 100);
         });
+        stopManifestPublisher?.();
         succeeded = true;
         refreshBusy = false;
         operationLog.write('program-update', { result: 'installer_started', count: result.downloaded, elapsedMs: Date.now() - started });

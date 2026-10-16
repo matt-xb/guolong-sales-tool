@@ -20,13 +20,15 @@ async function prepareProgramUpdate(source, target, exePath, pid, report = () =>
   const jobDir = await fs.mkdtemp(path.join(target, 'local-data/program-update-'));
   const stage = path.join(jobDir, 'stage');
   try {
-    const stats = await stageFiles(source, target, stage, manifest, report, p => p === 'sales.sqlite' ? 1 : p.startsWith('images/') ? 2 : p.startsWith('resources/materials/') ? 3 : 1);
+    const stats = await stageFiles(source, target, stage, manifest, report, p => p === 'sales.sqlite' ? 1 : p.startsWith('images/') ? 2 : p.startsWith('resources/materials/') ? 3 : 1, false);
+    const changed = new Set(stats.changed.map(f => f.path));
+    const verifiedFile = p => path.join(changed.has(p) ? stage : target, p);
     report({ step: 4, detail: '正在校验程序版本与数据库…' });
-    const release = JSON.parse(await fs.readFile(path.join(stage, 'release-version.json'), 'utf8'));
-    const pkg = JSON.parse(await fs.readFile(path.join(stage, 'resources/app/package.json'), 'utf8'));
+    const release = JSON.parse(await fs.readFile(verifiedFile('release-version.json'), 'utf8'));
+    const pkg = JSON.parse(await fs.readFile(verifiedFile('resources/app/package.json'), 'utf8'));
     const current = JSON.parse(await fs.readFile(path.join(source, 'release-version.json'), 'utf8'));
     if (!release.version || release.version !== pkg.version || release.version !== current.version) throw new Error('更新程序的版本信息不一致或发布源正在变化。');
-    if (names.has('sales.sqlite')) await validateDatabase(path.join(stage, 'sales.sqlite'), true);
+    if (names.has('sales.sqlite')) await validateDatabase(verifiedFile('sales.sqlite'), true);
     const local = await scanPaths(target);
     const job = {
       target, stage, exePath, pid, version: release.version,
