@@ -127,6 +127,7 @@ function buildFallbackInitials(groups) {
 
 contextBridge.exposeInMainWorld('salesApi', {
   getMeta: () => ipcRenderer.invoke('meta:get'),
+  getProgramUpdateResult: () => ipcRenderer.invoke('update:get-result'),
   listItems: (filters) => ipcRenderer.invoke('items:list', filters),
   getItem: (id) => ipcRenderer.invoke('items:get', id),
   saveItem: (item) => ipcRenderer.invoke('items:save', item),

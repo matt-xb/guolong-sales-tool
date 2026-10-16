@@ -7,6 +7,8 @@ const { initDatabase } = require('./src/main/database');
 const { buildInventoryPreview } = require('./src/main/inventory-import');
 const { productImagePaths, productImageFolder } = require('./src/shared/product-images');
 const { refreshData } = require('./src/main/data-refresh');
+const { startManifestPublisher } = require('./src/main/sync-manifest');
+const { prepareProgramUpdate } = require('./src/main/program-update');
 const { createOperationLog } = require('./src/main/operation-log');
 const { randomUUID } = require('node:crypto');
 const {
@@ -26,7 +28,6 @@ const AFTER_SALES_VIDEO = {
 };
 
 const LAN_UPDATE = {
-  scriptName: 'update.bat',
   sourceConfigName: 'update-source.txt',
   defaultSourcePath: process.env.SALES_UPDATE_SOURCE || edition.updateSource || '',
   versionFileName: 'release-version.json',
@@ -58,6 +59,7 @@ let lanConnection = Promise.resolve();
 let db;
 let dbPromise;
 let recentFilesMigrationDone = false;
+let stopManifestPublisher;
 const gotSingleInstanceLock = app.requestSingleInstanceLock();
 
 if (!gotSingleInstanceLock) {
@@ -120,11 +122,21 @@ if (gotSingleInstanceLock) {
   app.whenReady().then(() => {
     app.setAppUserModelId(edition.company ? 'com.guolong.sales-tool' : 'com.guolong.sales-tool.open-source');
     const dirs = ensureAppDirs();
+    const updateResult = readProgramUpdateResult(false);
+    if (updateResult?.recoveryRequired) {
+      dialog.showErrorBox('程序更新需要恢复', `上次更新自动恢复失败，请保留备份并联系维护人员：\n${updateResult.backup}`);
+      app.quit();
+      return;
+    }
     operationLog.write('startup', { version: app.getVersion() });
     dbPromise = initDatabase(path.join(dirs.baseDir, 'sales.sqlite'), getSeedDatabasePath())
       .then((database) => {
         db = database;
         operationLog.write('database.init', { result: 'ready' });
+        if (app.isPackaged) {
+          try { stopManifestPublisher = startManifestPublisher(dirs.baseDir, error => operationLog.write('sync-manifest', { result: 'failed', reason: error.name })); }
+          catch (error) { operationLog.write('sync-manifest', { result: 'failed', reason: error.name }); }
+        }
         return database;
       }).catch((error) => {
         operationLog.write('database.init', { result: 'failed', reason: error.name });
@@ -137,6 +149,7 @@ if (gotSingleInstanceLock) {
     });
   });
 }
+app.on('before-quit', () => stopManifestPublisher?.());
 
 function getDatabase() {
   return db || dbPromise;
@@ -350,12 +363,7 @@ handleOperation('update:start', async () => {
   if (!update.available) {
     throw new Error(update.message || '当前已经是最新版本。');
   }
-  const scriptPath = getLanUpdateScriptPath();
-  if (!scriptPath) {
-    throw new Error('未找到更新脚本，无法执行局域网更新。');
-  }
-  await runLanUpdateScript(scriptPath, update.sourcePath);
-  app.quit();
+  await startDataRefresh('program', update.sourcePath);
   return true;
 });
 
@@ -368,6 +376,15 @@ ipcMain.on('data-refresh:return', (event) => {
 });
 
 ipcMain.handle('data-refresh:get-result', async () => readDataRefreshResult());
+ipcMain.handle('update:get-result', async () => readProgramUpdateResult());
+
+function readProgramUpdateResult(consume = true) {
+  const file = path.join(getDataDir(), 'local-data/program-update-result.json');
+  if (!fs.existsSync(file)) return null;
+  const result = JSON.parse(fs.readFileSync(file, 'utf8').replace(/^\uFEFF/, ''));
+  if (consume && !result.recoveryRequired) fs.unlinkSync(file);
+  return result;
+}
 
 ipcMain.handle('images:pick', async (_event, options = {}) => {
   if (!String(options.name || '').trim()) throw new Error('请先填写商品名称，再选择图片。');
@@ -746,15 +763,6 @@ function getAfterSalesVideoScriptPath() {
   return candidates.find((candidate) => candidate && fs.existsSync(candidate)) || '';
 }
 
-function getLanUpdateScriptPath() {
-  const candidates = [
-    path.join(getDataDir(), 'tools', LAN_UPDATE.scriptName),
-    path.join(process.resourcesPath || '', 'tools', LAN_UPDATE.scriptName),
-    path.join(__dirname, 'tools', LAN_UPDATE.scriptName)
-  ];
-  return candidates.find((candidate) => candidate && fs.existsSync(candidate)) || '';
-}
-
 function readDataRefreshResult() {
   const filePath = path.join(ensureAppDirs().localDataDir, 'data-refresh-result.txt');
   if (!fs.existsSync(filePath)) return null;
@@ -935,45 +943,10 @@ function runAfterSalesVideoScript(scriptPath) {
   });
 }
 
-async function runLanUpdateScript(scriptPath, sourcePath) {
-  const targetDir = getDataDir();
-  if (!sourcePath) {
-    throw new Error('更新源路径为空。');
-  }
-  await connectLanUpdateShare(sourcePath);
-  if (!fs.existsSync(sourcePath)) {
-    throw new Error(buildUpdateSourceAccessMessage(sourcePath));
-  }
-  if (!fs.existsSync(scriptPath)) {
-    throw new Error(`未找到 update.bat：${scriptPath}`);
-  }
-
-  return new Promise((resolve, reject) => {
-    const cmdPath = getCmdExePath();
-    const exePath = process.execPath;
-    const appPid = String(process.pid);
-    const command = `call "${scriptPath}" "${sourcePath}" "${targetDir}" "${exePath}" "${appPid}"`;
-    const child = spawn(cmdPath, ['/d', '/c', command], {
-      cwd: targetDir,
-      detached: true,
-      stdio: 'ignore',
-      windowsHide: true,
-      windowsVerbatimArguments: true
-    });
-
-    child.once('error', (error) => {
-      reject(new Error(`启动更新器失败：${error.message}`));
-    });
-    child.once('spawn', () => {
-      child.unref();
-      setTimeout(() => resolve(true), 800);
-    });
-  });
-}
-
-async function startDataRefresh() {
+async function startDataRefresh(mode = 'data', updateSource) {
   if (refreshWindow) { operationLog.write('data-refresh', { result: 'skipped', reason: 'already_running' }); refreshWindow.focus(); return; }
-  const source = getLanUpdateSourcePath();
+  const program = mode === 'program';
+  const source = updateSource || getLanUpdateSourcePath();
   if (!source) throw new Error('资料源路径为空。');
   const target = getDataDir();
   let succeeded = false;
@@ -982,7 +955,7 @@ async function startDataRefresh() {
   refreshBusy = true;
   const progress = new BrowserWindow({
     width: 660, height: 440, resizable: false, maximizable: false,
-    title: '刷新产品资料', icon: getWindowIconPath(), autoHideMenuBar: true,
+    title: program ? '升级销售工具' : '刷新产品资料', icon: getWindowIconPath(), autoHideMenuBar: true,
     webPreferences: { preload: path.join(__dirname, 'src/renderer/data-refresh-preload.js'), contextIsolation: true, nodeIntegration: false }
   });
   refreshWindow = progress;
@@ -994,7 +967,7 @@ async function startDataRefresh() {
       else if (!mainWindow || mainWindow.isDestroyed()) createWindow();
     }
   });
-  try { await progress.loadFile(path.join(__dirname, 'src/renderer/data-refresh.html')); }
+  try { await progress.loadFile(path.join(__dirname, 'src/renderer/data-refresh.html'), { query: { mode } }); }
   catch (error) { refreshBusy = false; progress.destroy(); throw error; }
   mainWindow.close();
   const id = randomUUID();
@@ -1012,10 +985,26 @@ async function startDataRefresh() {
     try {
       report({ step: 0, detail: '正在建立局域网连接…' });
       await connectLanUpdateShare(source);
-      await refreshData(source, target, report);
+      if (program) {
+        const result = await prepareProgramUpdate(source, target, process.execPath, process.pid, report);
+        report({ step: 5, detail: '下载与校验完成，正在安装并重新打开软件…', ...result });
+        stopManifestPublisher?.();
+        const powershell = path.join(process.env.SystemRoot || 'C:\\Windows', 'System32/WindowsPowerShell/v1.0/powershell.exe');
+        await new Promise((resolve, reject) => {
+          const child = spawn(powershell, ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', path.join(result.jobDir, 'apply.ps1'), '-JobPath', path.join(result.jobDir, 'job.json')], { detached: true, stdio: 'ignore', windowsHide: true });
+          child.once('error', reject);
+          child.once('spawn', () => { child.unref(); resolve(); });
+        });
+        succeeded = true;
+        refreshBusy = false;
+        operationLog.write('program-update', { result: 'installer_started', count: result.downloaded, elapsedMs: Date.now() - started });
+        app.quit();
+        return;
+      }
+      const stats = await refreshData(source, target, report);
       applied = true;
       await fs.promises.writeFile(path.join(target, 'local-data/data-refresh-result.txt'), 'OK|', 'utf8').catch(() => {});
-      report({ step: 6, current: 1, total: 1, detail: '最新数据库、库存、图片和资料已就绪' });
+      report({ step: 6, current: 1, total: 1, detail: '最新数据库、库存、图片和资料已就绪', ...stats });
       await new Promise((resolve) => setTimeout(resolve, 800));
       succeeded = true;
       operationLog.write('data-refresh', { id, result: 'applied', elapsedMs: Date.now() - started });
@@ -1062,12 +1051,6 @@ function buildUpdateSourceAccessMessage(sourcePath) {
     '请先在这台电脑的资源管理器地址栏打开上面的路径。',
     '如果资源管理器也打不开，请检查：更新源电脑是否开机、两台电脑是否在同一网络、网络发现和文件共享是否开启、防火墙是否允许文件和打印机共享、更新源电脑名是否能被同事电脑解析。'
   ].join('\n');
-}
-
-function getCmdExePath() {
-  const systemRoot = process.env.SystemRoot || process.env.windir || 'C:\\Windows';
-  const cmdPath = path.join(systemRoot, 'System32', 'cmd.exe');
-  return fs.existsSync(cmdPath) ? cmdPath : 'cmd.exe';
 }
 
 handleOperation('contract:create', async (_event, payload) => {

@@ -608,6 +608,8 @@ async function init() {
   updateContractNo();
   await loadItems();
   await showDataRefreshResult();
+  const updateResult = await window.salesApi.getProgramUpdateResult?.();
+  if (updateResult && !updateResult.ok) showToast(`程序更新未完成，已恢复原版本。${updateResult.message || '请稍后重试。'}`, 'error');
 
   if (state.meta && state.meta.version) {
     const versionEl = el.heroUpdateAppBtn;

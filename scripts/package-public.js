@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
 const { stageApplication } = require('./stage-application');
+const { publishManifest } = require('../src/main/sync-manifest');
 
 const root = path.resolve(__dirname, '..');
 const args = process.argv.slice(2);
@@ -26,3 +27,4 @@ execFileSync(process.env.ComSpec || 'C:\Windows\System32\cmd.exe',
 if (!company) execFileSync(process.execPath, ['scripts/test-open-source.js'], { cwd: app, stdio: 'inherit', windowsHide: true });
 for (const file of ['LICENSE', 'README.md']) fs.copyFileSync(path.join(root, file), path.join(output, file));
 console.log(`${edition} portable build: ${output}`);
+publishManifest(output).catch(error => { console.error(error.message); process.exitCode = 1; });

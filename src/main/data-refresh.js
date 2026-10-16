@@ -1,20 +1,22 @@
 const fs = require('fs/promises');
 const path = require('path');
 const initSqlJs = require('sql.js');
+const { readManifest, stageFiles } = require('./sync-manifest');
 
 async function exists(file) {
   try { await fs.lstat(file); return true; }
   catch (error) { if (error.code === 'ENOENT') return false; throw error; }
 }
 
-async function validateDatabase(file) {
+async function validateDatabase(file, allowEmpty = false) {
   const bytes = await fs.readFile(file);
   if (!bytes.subarray(0, 16).equals(Buffer.from('SQLite format 3\0'))) throw new Error('下载的数据库格式无效。');
   const SQL = await initSqlJs();
   const db = new SQL.Database(bytes);
   try {
     if (db.exec('PRAGMA quick_check')[0]?.values[0]?.[0] !== 'ok') throw new Error('下载的数据库完整性校验失败。');
-    if (!(db.exec('SELECT COUNT(*) FROM items')[0]?.values[0]?.[0] > 0)) throw new Error('下载的数据库没有产品数据。');
+    const count = db.exec('SELECT COUNT(*) FROM items')[0]?.values[0]?.[0];
+    if (!(count >= 0) || !allowEmpty && count === 0) throw new Error('下载的数据库没有产品数据。');
   } finally { db.close(); }
 }
 
@@ -64,13 +66,23 @@ async function refreshData(source, target, report = () => {}) {
   let backup;
   const swapped = [];
   let recoveryRequired = false;
+  let stats;
   try {
-    report({ step: 1, detail: '正在下载最新产品和库存数据…' });
-    await fs.copyFile(path.join(source, 'sales.sqlite'), path.join(stage, 'sales.sqlite'));
-    await copyTree(path.join(source, 'images'), path.join(stage, 'images'), 2, report);
-    const hasMaterials = await exists(path.join(source, 'resources', 'materials'));
-    if (hasMaterials) await copyTree(path.join(source, 'resources', 'materials'), path.join(stage, 'materials'), 3, report);
-    else report({ step: 3, detail: '共享目录未提供资料文件，保留本机现有资料' });
+    const manifest = await readManifest(source);
+    const hasMaterials = manifest ? manifest.directories.includes('resources/materials') : await exists(path.join(source, 'resources', 'materials'));
+    if (manifest) {
+      const wanted = p => p === 'sales.sqlite' || p === 'images' || p.startsWith('images/') || p === 'resources/materials' || p.startsWith('resources/materials/');
+      if (!manifest.files.some(f => f.path === 'sales.sqlite') || !manifest.directories.includes('images')) throw new Error('更新清单缺少数据库或图片目录。');
+      const selection = { directories: manifest.directories.filter(wanted), files: manifest.files.filter(f => wanted(f.path)) };
+      stats = await stageFiles(source, target, stage, selection, report, p => p === 'sales.sqlite' ? 1 : p.startsWith('images/') ? 2 : 3);
+      if (hasMaterials) await fs.rename(path.join(stage, 'resources/materials'), path.join(stage, 'materials'));
+    } else {
+      report({ step: 1, detail: '共享源尚无增量清单，本次使用兼容模式下载资料' });
+      await fs.copyFile(path.join(source, 'sales.sqlite'), path.join(stage, 'sales.sqlite'));
+      await copyTree(path.join(source, 'images'), path.join(stage, 'images'), 2, report);
+      if (hasMaterials) await copyTree(path.join(source, 'resources', 'materials'), path.join(stage, 'materials'), 3, report);
+    }
+    if (!hasMaterials) report({ step: 3, detail: '共享目录未提供资料文件，保留本机现有资料' });
     report({ step: 4, detail: '正在检查数据库完整性与产品数据…' });
     await validateDatabase(path.join(stage, 'sales.sqlite'));
     // Rename on the same volume; every old directory remains available until the whole swap succeeds.
@@ -87,6 +99,7 @@ async function refreshData(source, target, report = () => {}) {
       await fs.rename(path.join(stage, name), destination);
       entry.installed = true;
     }
+    return stats;
   } catch (error) {
     const reasons = { ENOENT: '共享目录或资料文件不存在，请检查网络及共享目录。', EACCES: '没有权限访问或替换资料，请检查共享权限及文件是否被占用。', EPERM: '资料文件被占用或访问受限，请关闭相关文件后重试。', ENOSPC: '本机磁盘空间不足，请清理空间后重试。' };
     if (reasons[error.code]) error.message = reasons[error.code];
