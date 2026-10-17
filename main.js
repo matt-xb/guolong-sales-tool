@@ -344,6 +344,16 @@ ipcMain.handle('recent:reveal', async (_event, filePath) => {
   shell.showItemInFolder(filePath);
   return true;
 });
+handleOperation('recent:copy', async (_event, filePath) => {
+  if (typeof filePath !== 'string' || !path.isAbsolute(filePath)
+    || !readRecentFiles().some(item => typeof item.filePath === 'string' && path.resolve(item.filePath) === path.resolve(filePath))) {
+    throw new Error('只能复制最近文件中记录的合同或报价单。');
+  }
+  if (!fs.existsSync(filePath)) throw new Error('文件不存在，可能已被移动或删除。');
+  if (!fs.statSync(filePath).isFile()) throw new Error('无法复制：这不是一个文件。');
+  await copyFilePathToClipboard(filePath);
+  return { ok: true };
+});
 
 handleOperation('after-sales-video:open', async () => {
   const scriptPath = getAfterSalesVideoScriptPath();
@@ -736,9 +746,8 @@ function copyFilePathToClipboard(filePath) {
       '-ExecutionPolicy',
       'Bypass',
       '-Command',
-      '& { param($p) Set-Clipboard -LiteralPath $p }',
-      filePath
-    ], { windowsHide: true }, (error) => {
+      'Set-Clipboard -LiteralPath $env:SALES_CLIPBOARD_FILE -ErrorAction Stop'
+    ], { windowsHide: true, env: { ...process.env, SALES_CLIPBOARD_FILE: filePath } }, (error) => {
       if (error) {
         reject(new Error(`复制失败：${error.message}`));
         return;

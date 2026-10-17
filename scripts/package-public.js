@@ -21,6 +21,13 @@ fs.cpSync(runtime, output, { recursive: true, filter: file => !['debug.log', 'de
 fs.renameSync(path.join(output, 'electron.exe'), path.join(output, company ? '国龙食品机械销售工具.exe' : 'GuolongSalesTool.exe'));
 const app = path.join(output, 'resources', 'app');
 stageApplication(root, output, company, options['--data-root'] ? path.resolve(options['--data-root']) : company);
+const icon = path.join(app, 'build', 'icon.ico');
+if (fs.existsSync(icon)) {
+  execFileSync('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File',
+    path.join(root, 'scripts', 'set-windows-icon.ps1'), '-Executable',
+    path.join(output, company ? '国龙食品机械销售工具.exe' : 'GuolongSalesTool.exe'), '-Icon', icon],
+  { stdio: 'inherit', windowsHide: true });
+}
 execFileSync(process.env.ComSpec || 'C:\Windows\System32\cmd.exe',
   ['/d', '/c', 'npm.cmd', 'ci', '--omit=dev', '--ignore-scripts', '--no-audit', '--no-fund'],
   { cwd: app, stdio: 'inherit', windowsHide: true });

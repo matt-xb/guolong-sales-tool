@@ -1891,6 +1891,15 @@ dialog::backdrop {
   align-items: center;
 }
 
+.recent-file-copy {
+  min-width: 78px;
+}
+
+@media (max-width: 760px) {
+  .recent-file-item { grid-template-columns: minmax(0, 1fr); }
+  .recent-file-actions { flex-wrap: wrap; }
+}
+
 .recent-files-list.empty {
   padding: 32px 18px;
   color: var(--muted);

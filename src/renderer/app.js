@@ -2411,6 +2411,7 @@ function renderRecentFiles() {
       <div class="recent-file-actions">
         <button class="ghost-btn" data-action="open" data-path="${escapeAttribute(item.filePath || '')}">打开文件</button>
         <button class="ghost-btn" data-action="reveal" data-path="${escapeAttribute(item.filePath || '')}">打开所在文件夹</button>
+        <button class="ghost-btn recent-file-copy" data-action="copy" data-path="${escapeAttribute(item.filePath || '')}">${uiText('复制', 'Copy')}</button>
       </div>
     </div>
   `).join('');
@@ -2420,10 +2421,23 @@ function renderRecentFiles() {
       try {
         if (button.dataset.action === 'open') {
           await window.salesApi.openRecentFile(filePath);
-        } else {
+        } else if (button.dataset.action === 'reveal') {
           await window.salesApi.revealRecentFile(filePath);
+        } else if (button.dataset.action === 'copy') {
+          button.disabled = true;
+          button.textContent = uiText('复制中', 'Copying');
+          await window.salesApi.copyRecentFile(filePath);
+          button.textContent = uiText('已复制', 'Copied');
+          setTimeout(() => {
+            button.textContent = uiText('复制', 'Copy');
+            button.disabled = false;
+          }, 1500);
         }
       } catch (error) {
+        if (button.dataset.action === 'copy') {
+          button.textContent = uiText('复制', 'Copy');
+          button.disabled = false;
+        }
         showToast(error.message || '文件操作失败。', 'error');
       }
     });
