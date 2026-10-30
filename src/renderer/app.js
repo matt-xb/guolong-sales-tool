@@ -3927,6 +3927,7 @@ function invoiceLabelDefs() {
     { label: '单位地址', key: 'address' },
     { label: '注册地址', key: 'address' },
     { label: '地址、电话', key: 'address' },
+    { label: '地址及电话', key: 'address' },
     { label: '地址电话', key: 'address' },
     { label: '开户行', key: 'bank' },
     { label: '名称', key: 'name' },
@@ -4265,6 +4266,7 @@ function invoiceStrictLabels() {
     { label: '学校名称', key: 'name' },
     { label: '开户地址', key: 'address' },
     { label: '地址在', key: 'address' },
+    { label: '地址及电话', key: 'address' },
     { label: '地址电话', key: 'address' },
     { label: '地址、电话', key: 'address' },
     { label: '税务登记的地址', key: 'address' },
@@ -4398,7 +4400,7 @@ function invoiceFindAddressStrict(text, fields = {}) {
 
 function invoiceSliceFromAddressLabel(text) {
   const source = String(text || '');
-  const match = source.match(/(?:地址在|开户地址|单位地址|地址电话|地址、电话|地址)\s*[:：]?([\s\S]*)/);
+  const match = source.match(/(?:地址在|开户地址|单位地址|地址及电话|地址电话|地址、电话|地址)\s*[:：]?([\s\S]*)/);
   return match ? match[1] : source;
 }
 
@@ -4463,7 +4465,7 @@ function invoiceCleanBankStrict(value) {
 
 function invoiceCleanAddressStrict(value) {
   return invoiceCleanNoiseStrict(value)
-    .replace(/^(地址在|开户地址|单位地址|地址)[:：]?/g, '')
+    .replace(/^(地址在|开户地址|单位地址|地址及电话|地址电话|地址、电话|地址)[:：]?/g, '')
     .replace(/^[^\u4e00-\u9fa5]*(?=[\u4e00-\u9fa5])/g, '')
     .replace(/^[0-9A-Z]{1,20}(?=[\u4e00-\u9fa5]*(?:省|市|区|县|镇|街|路|巷|号))/i, '')
     .replace(/(?:电话|话)[:：]?.*$/s, '')
@@ -4538,7 +4540,7 @@ function invoiceFindUnusedBankLineNoStrict(text, fields) {
   ].filter(Boolean).map((item) => String(item).replace(/\D/g, ''));
   for (const match of String(text || '').matchAll(/(?:^|[^\d])((?:\d[\s.\-]*){12})(?!\d)/g)) {
     const value = match[1].replace(/[^\d]/g, '');
-    if (value.length === 12 && !used.some((item) => item === value || item.includes(value))) return value;
+    if (value.length === 12 && !used.some((item) => item === value || item.includes(value) || value.includes(item))) return value;
   }
   return '';
 }
@@ -4626,7 +4628,7 @@ function invoiceBankLabelPatternStrict() {
 }
 
 function invoiceAddressLabelPatternStrict() {
-  return /^(?:地址在|开户地址|单位地址|注册地址|地址电话|地址、电话|地址)\s*:?\s*(.+)$/;
+  return /^(?:地址在|开户地址|单位地址|注册地址|地址及电话|地址电话|地址、电话|地址)\s*:?\s*(.+)$/;
 }
 
 function invoiceMailingAddressLabelPatternStrict() {
