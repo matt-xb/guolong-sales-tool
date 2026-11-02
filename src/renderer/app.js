@@ -481,7 +481,7 @@ const state = {
   update: null,
   inventoryFile: null,
   inventoryPreview: null,
-  showPrices: true,
+  priceMode: 'base',
   quoteLanguage: 'zh',
   recentFiles: [],
   recentFileType: 'contract'
@@ -510,7 +510,7 @@ const el = {
   heroAfterSalesVideoBtn: document.querySelector('#heroAfterSalesVideoBtn'),
   heroUpdateAppBtn: document.querySelector('#heroUpdateAppBtn'),
   heroDataRefreshBtn: document.querySelector('#heroDataRefreshBtn'),
-  priceVisibilityToggle: document.querySelector('#priceVisibilityToggle'),
+  priceMode: document.querySelector('#priceMode'),
   quoteEnglishToggle: document.querySelector('#quoteEnglishToggle'),
   goContractBtn: document.querySelector('#goContractBtn'),
   goQuoteBtn: document.querySelector('#goQuoteBtn'),
@@ -674,8 +674,10 @@ function updateStaticLanguage() {
   el.searchInput.placeholder = uiText('搜索名称、型号、容量、加热方式或拼音...', 'Search name, model, capacity, heating method or Pinyin...');
   document.querySelector('#selectedCount')?.previousElementSibling && (document.querySelector('#selectedCount').previousElementSibling.textContent = uiText('已选清单', 'Selection'));
   document.querySelector('.action-hint').textContent = uiText('选好商品后，选择要输出的单据。', 'Select products first, then choose an output document.');
-  const priceText = el.priceVisibilityToggle.closest('label').querySelector('.switch-text');
-  priceText.textContent = uiText('显示价格', 'Show Prices');
+  el.priceMode.setAttribute('aria-label', uiText('价格档位', 'Price Mode'));
+  ['隐藏', '显示', '普票（+2%）', '专票（+12%）'].forEach((label, index) => {
+    el.priceMode.options[index].textContent = uiText(label, ['Hide', 'Base Price', 'Invoice +2%', 'VAT +12%'][index]);
+  });
   const englishText = el.quoteEnglishToggle.closest('label').querySelector('.switch-text');
   englishText.textContent = uiText('英文报价', 'English');
   document.querySelector('#inventoryDialog .inventory-head h2').textContent = uiText('导入库存', 'Import Inventory');
@@ -777,8 +779,8 @@ function bindEvents() {
   el.heroImportInventoryBtn.addEventListener('click', openInventoryDialog);
   el.heroUpdateAppBtn.addEventListener('click', handleUpdateClick);
   el.heroDataRefreshBtn.addEventListener('click', handleDataRefreshClick);
-  el.priceVisibilityToggle.addEventListener('change', () => {
-    state.showPrices = el.priceVisibilityToggle.checked;
+  el.priceMode.addEventListener('change', () => {
+    state.priceMode = el.priceMode.value;
     renderCards();
     renderSelected();
     if (!el.productDetailOverlay.classList.contains('hidden')) {
@@ -1504,7 +1506,7 @@ function buildProductDetailHtml(item) {
         <div class="product-detail-meta">
           ${detailMeta(uiText('型号', 'Model'), translateModel(item.model || uiText('未填写', 'Not filled')))}
           ${detailMeta(uiText('外型尺寸', 'Overall Dimensions'), translateChineseText(item.dimensions || uiText('未填写', 'Not filled')))}
-          ${state.showPrices ? detailMeta(uiText('价格', 'Price'), formatPrice(item.price)) : ''}
+          ${state.priceMode !== 'hidden' ? detailMeta(uiText('价格', 'Price'), formatPrice(priceForMode(item.price))) : ''}
         </div>
         ${buildDocumentActionsHtml(item)}
       </div>
@@ -1789,7 +1791,7 @@ function materializeSelectedItem(item) {
 
 function materializeSelectedItemForExport(item) {
   const value = materializeSelectedItem(item);
-  if (!state.showPrices) value.price = 0;
+  value.price = state.priceMode === 'hidden' ? 0 : selectedPrice(item);
   return isEnglishMode() ? translateItemForEnglishExport(value) : value;
 }
 
@@ -1902,7 +1904,7 @@ function renderSelected() {
     node.querySelectorAll('input').forEach((input) => {
       input.addEventListener('input', () => {
         const item = state.selected.get(key);
-        if (item) item[input.dataset.field] = input.value;
+        if (item) updateSelectedField(item, input.dataset.field, input.value);
       });
     });
     node.querySelector('[data-action="remove"]').addEventListener('click', () => {
@@ -1941,7 +1943,7 @@ function renderContractSelected() {
     node.querySelectorAll('input').forEach((input) => {
       input.addEventListener('input', () => {
         const item = state.selected.get(key);
-        if (item) item[input.dataset.field] = input.value;
+        if (item) updateSelectedField(item, input.dataset.field, input.value);
       });
     });
   });
@@ -1973,7 +1975,7 @@ function renderQuoteSelected() {
     node.querySelectorAll('input').forEach((input) => {
       input.addEventListener('input', () => {
         const item = state.selected.get(key);
-        if (item) item[input.dataset.field] = input.value;
+        if (item) updateSelectedField(item, input.dataset.field, input.value);
       });
     });
   });
@@ -4683,19 +4685,40 @@ function showScopedToast(scope, message, type = 'info') {
   scopedToastTimers.set(scope, timer);
 }
 
+function priceForMode(price) {
+  if (price === null || price === undefined || price === '') return price;
+  const points = state.priceMode === 'normal' ? 102 : state.priceMode === 'special' ? 112 : 100;
+  const cents = Number(price) * points;
+  return Math.round(cents + Number.EPSILON * Math.abs(cents)) / 100;
+}
+
+function selectedPrice(item) {
+  return item.priceOverrides && Object.hasOwn(item.priceOverrides, state.priceMode)
+    ? item.priceOverrides[state.priceMode] : priceForMode(item.price);
+}
+
+function updateSelectedField(item, field, value) {
+  if (field === 'price') {
+    item.priceOverrides ||= {};
+    item.priceOverrides[state.priceMode] = value;
+  } else {
+    item[field] = value;
+  }
+}
+
 function formatPrice(price) {
   if (price === null || price === undefined || price === '') return uiText('待确认', 'TBD');
   return `￥${Number(price).toLocaleString('zh-CN')}`;
 }
 
 function renderPriceMeta(price) {
-  if (!state.showPrices) return '';
-  return `<div>${uiText('价格', 'Price')}: <span class="price">${formatPrice(price)}</span></div>`;
+  if (state.priceMode === 'hidden') return '';
+  return `<div>${uiText('价格', 'Price')}: <span class="price">${formatPrice(priceForMode(price))}</span></div>`;
 }
 
 function renderSelectedPriceInput(item) {
-  if (!state.showPrices) return '';
-  return `<label>${uiText('单价', 'Unit Price')}<input data-field="price" type="number" min="0" step="0.01" value="${item.price ?? ''}" placeholder="${uiText('可为空', 'Optional')}"></label>`;
+  if (state.priceMode === 'hidden') return '';
+  return `<label>${uiText('单价', 'Unit Price')}<input data-field="price" type="number" min="0" step="0.01" value="${selectedPrice(item) ?? ''}" placeholder="${uiText('可为空', 'Optional')}"></label>`;
 }
 
 function shortText(text, limit) {

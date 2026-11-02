@@ -222,6 +222,16 @@ body.english-mode .hero-actions {
   gap: 7px;
 }
 
+.hero-toggle-stack .price-mode {
+  min-height: 34px;
+  width: 100%;
+  padding: 6px 8px;
+  border-radius: 999px;
+  background-color: rgba(255, 255, 255, 0.92);
+  font-size: 13px;
+  font-weight: 800;
+}
+
 .hero-button-stack {
   display: grid;
   gap: 8px;
@@ -972,6 +982,25 @@ body.detail-open {
 }
 
 @media (max-width: 760px) {
+  .brand-hero,
+  body.english-mode .brand-hero {
+    height: auto;
+  }
+
+  .hero-copy,
+  body.english-mode .hero-copy {
+    height: auto;
+    padding: 40px 24px 14px;
+  }
+
+  .hero-actions,
+  body.english-mode .hero-actions {
+    position: static;
+    width: auto;
+    margin: 0 18px 14px;
+    justify-content: end;
+  }
+
   .product-detail-overlay {
     padding: 10px;
   }

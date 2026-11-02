@@ -43,11 +43,12 @@
                   <span class="switch-track" aria-hidden="true"></span>
                   <span class="switch-text">英文报价</span>
                 </label>
-                <label class="price-visibility-toggle" title="关闭后仅隐藏界面价格，不修改数据库">
-                  <input id="priceVisibilityToggle" type="checkbox" checked />
-                  <span class="switch-track" aria-hidden="true"></span>
-                  <span class="switch-text">显示价格</span>
-                </label>
+                <select id="priceMode" class="price-mode" aria-label="价格档位" title="按原价加点计算，不修改商品原价；导出使用当前档位价格">
+                  <option value="hidden">隐藏</option>
+                  <option value="base" selected>显示</option>
+                  <option value="normal">普票（+2%）</option>
+                  <option value="special">专票（+12%）</option>
+                </select>
               </div>
               <div class="hero-button-stack">
                 <button id="heroRecentFilesBtn" class="ghost-btn hero-recent-btn">最近文件</button>
