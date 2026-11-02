@@ -675,9 +675,8 @@ function updateStaticLanguage() {
   document.querySelector('#selectedCount')?.previousElementSibling && (document.querySelector('#selectedCount').previousElementSibling.textContent = uiText('已选清单', 'Selection'));
   document.querySelector('.action-hint').textContent = uiText('选好商品后，选择要输出的单据。', 'Select products first, then choose an output document.');
   el.priceMode.setAttribute('aria-label', uiText('价格档位', 'Price Mode'));
-  ['隐藏', '显示', '普票（+2%）', '专票（+12%）'].forEach((label, index) => {
-    el.priceMode.options[index].textContent = uiText(label, ['Hide', 'Base Price', 'Invoice +2%', 'VAT +12%'][index]);
-  });
+  document.querySelector('#priceModeLabel').textContent = uiText('价格档位', 'Price mode');
+  updatePriceModeControl();
   const englishText = el.quoteEnglishToggle.closest('label').querySelector('.switch-text');
   englishText.textContent = uiText('英文报价', 'English');
   document.querySelector('#inventoryDialog .inventory-head h2').textContent = uiText('导入库存', 'Import Inventory');
@@ -779,8 +778,9 @@ function bindEvents() {
   el.heroImportInventoryBtn.addEventListener('click', openInventoryDialog);
   el.heroUpdateAppBtn.addEventListener('click', handleUpdateClick);
   el.heroDataRefreshBtn.addEventListener('click', handleDataRefreshClick);
-  el.priceMode.addEventListener('change', () => {
-    state.priceMode = el.priceMode.value;
+  el.priceMode.addEventListener('input', () => {
+    state.priceMode = ['hidden', 'base', 'normal', 'special'][Number(el.priceMode.value)];
+    updatePriceModeControl();
     renderCards();
     renderSelected();
     if (!el.productDetailOverlay.classList.contains('hidden')) {
@@ -4683,6 +4683,14 @@ function showScopedToast(scope, message, type = 'info') {
     toast.classList.add('hidden');
   }, type === 'error' || type === 'warning' ? 5200 : 3600);
   scopedToastTimers.set(scope, timer);
+}
+
+function updatePriceModeControl() {
+  const index = ['hidden', 'base', 'normal', 'special'].indexOf(state.priceMode);
+  el.priceMode.value = index;
+  const label = uiText(['隐藏', '显示原价', '普票 +2%', '专票 +12%'][index], ['Hidden', 'Base', 'Invoice +2%', 'VAT +12%'][index]);
+  document.querySelector('#priceModeValue').textContent = label;
+  el.priceMode.setAttribute('aria-valuetext', label);
 }
 
 function priceForMode(price) {

@@ -222,14 +222,115 @@ body.english-mode .hero-actions {
   gap: 7px;
 }
 
-.hero-toggle-stack .price-mode {
-  min-height: 34px;
+.price-slider {
+  width: 154px;
+  padding: 8px 9px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 10px;
+  background: #eaf0ee;
+}
+
+.price-slider-heading {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 7px;
+  white-space: nowrap;
+  font-size: 10px;
+  color: #687b7b;
+}
+
+.price-slider-heading output {
+  color: #127e97;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.price-slider-track {
+  position: relative;
+  height: 22px;
+  border-radius: 6px;
+  background: #ccd8d5;
+}
+
+.price-slider-ticks {
+  position: absolute;
+  inset: 0 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  pointer-events: none;
+}
+
+.price-slider-ticks i {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #8a9f9a;
+}
+
+.price-slider #priceMode {
+  position: relative;
+  display: block;
+  appearance: none;
+  -webkit-appearance: none;
   width: 100%;
-  padding: 6px 8px;
-  border-radius: 999px;
-  background-color: rgba(255, 255, 255, 0.92);
-  font-size: 13px;
-  font-weight: 800;
+  height: 22px;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  cursor: ew-resize;
+}
+
+.price-slider #priceMode::-webkit-slider-runnable-track {
+  height: 22px;
+  background: transparent;
+}
+
+.price-slider #priceMode::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 28px;
+  margin-top: -3px;
+  border: 1px solid rgba(41, 66, 62, 0.16);
+  border-radius: 4px;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(26, 50, 46, 0.24);
+}
+
+.price-slider #priceMode::-moz-range-track {
+  height: 22px;
+  background: transparent;
+}
+
+.price-slider #priceMode::-moz-range-thumb {
+  width: 12px;
+  height: 26px;
+  border: 1px solid rgba(41, 66, 62, 0.16);
+  border-radius: 4px;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(26, 50, 46, 0.24);
+}
+
+.price-slider #priceMode:focus-visible {
+  outline: 2px solid #127e97;
+  outline-offset: 4px;
+}
+
+body.english-mode .price-slider {
+  width: 142px;
+}
+
+body.english-mode .price-slider-heading {
+  gap: 4px;
+  font-size: 9px;
+}
+
+body.english-mode .price-slider-heading output {
+  font-size: 10px;
 }
 
 .hero-button-stack {

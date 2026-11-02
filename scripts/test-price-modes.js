@@ -8,6 +8,20 @@ const context = vm.createContext({ state: { priceMode: 'base' } });
 vm.runInContext(source.match(/^function \w+\([^\n]*\) \{[\s\S]*?^\}/gm).join('\n'), context);
 context.isEnglishMode = () => false;
 context.uiText = zh => zh;
+const control = { setAttribute(name, value) { this[name] = value; } };
+const output = {};
+context.el = { priceMode: control };
+context.document = { querySelector: () => output };
+for (const [index, mode] of ['hidden', 'base', 'normal', 'special'].entries()) {
+  context.state.priceMode = mode;
+  context.updatePriceModeControl();
+  assert.equal(control.value, index);
+  assert.equal(control['aria-valuetext'], ['隐藏', '显示原价', '普票 +2%', '专票 +12%'][index]);
+  assert.equal(output.textContent, control['aria-valuetext']);
+}
+const markup = fs.readFileSync(path.join(__dirname, '../src/renderer/index.html'), 'utf8');
+assert.match(markup, /id="priceMode" type="range" min="0" max="3" step="1" value="1"/);
+assert.match(source, /el\.priceMode\.addEventListener\('input'/);
 const item = { id: 1, name: 'Synthetic item', price: 1000, quantity: 3 };
 for (let repeat = 0; repeat < 3; repeat++) {
   for (const [mode, price] of [['normal', 1020], ['special', 1120], ['base', 1000]]) {
