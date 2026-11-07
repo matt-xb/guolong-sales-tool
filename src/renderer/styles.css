@@ -223,8 +223,8 @@ body.english-mode .hero-actions {
 }
 
 .price-slider {
-  width: 154px;
-  padding: 8px 9px;
+  width: 100%;
+  padding: 10px 12px;
   border: 1px solid rgba(255, 255, 255, 0.4);
   border-radius: 10px;
   background: #eaf0ee;
@@ -318,10 +318,6 @@ body.english-mode .hero-actions {
 .price-slider #priceMode:focus-visible {
   outline: 2px solid #127e97;
   outline-offset: 4px;
-}
-
-body.english-mode .price-slider {
-  width: 142px;
 }
 
 body.english-mode .price-slider-heading {

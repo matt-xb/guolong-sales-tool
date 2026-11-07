@@ -16,7 +16,7 @@ for (const [index, mode] of ['hidden', 'base', 'normal', 'special'].entries()) {
   context.state.priceMode = mode;
   context.updatePriceModeControl();
   assert.equal(control.value, index);
-  assert.equal(control['aria-valuetext'], ['隐藏', '显示原价', '普票 +2%', '专票 +12%'][index]);
+  assert.equal(control['aria-valuetext'], ['隐藏', '基础价', '普票 +2%', '专票 +12%'][index]);
   assert.equal(output.textContent, control['aria-valuetext']);
 }
 const markup = fs.readFileSync(path.join(__dirname, '../src/renderer/index.html'), 'utf8');
@@ -37,19 +37,41 @@ for (let repeat = 0; repeat < 3; repeat++) {
 context.state.priceMode = 'normal';
 assert.equal(context.priceForMode(19.99), 20.39);
 assert.equal(context.priceForMode(0.25), 0.26);
-context.updateSelectedField(item, 'price', '999.99');
-assert.equal(context.materializeSelectedItemForExport(item).price, '999.99');
+const product = { ...item, price: 100 };
+const line = { ...product };
+context.state.priceMode = 'base';
+context.updateSelectedField(line, 'price', '200');
+for (let repeat = 0; repeat < 3; repeat++) {
+  for (const [mode, price] of [['normal', 204], ['special', 224], ['base', 200]]) {
+    context.state.priceMode = mode;
+    assert.equal(context.selectedPrice(line), price);
+    assert.equal(context.materializeSelectedItemForExport(line).price, price);
+    assert.match(context.renderSelectedPriceInput(line), new RegExp(`value="${price}"`));
+    assert.match(context.renderPriceMeta(product.price), /￥100</);
+  }
+}
+assert.equal(product.price, 100);
+context.state.priceMode = 'normal';
+context.updateSelectedField(line, 'price', '306');
+assert.equal(context.selectedPrice(line), 306);
 context.state.priceMode = 'special';
-assert.equal(context.selectedPrice(item), 1120);
-context.updateSelectedField(item, 'price', '');
-assert.equal(context.selectedPrice(item), '');
+assert.equal(context.selectedPrice(line), 336);
+context.state.priceMode = 'base';
+assert.equal(context.selectedPrice(line), 300);
+context.updateSelectedField(line, 'price', '');
+for (const mode of ['normal', 'special', 'base']) {
+  context.state.priceMode = mode;
+  assert.equal(context.selectedPrice(line), '');
+}
+context.updateSelectedField(line, 'price', '0');
+assert.equal(context.selectedPrice(line), 0);
 context.state.priceMode = 'hidden';
-assert.equal(context.renderPriceMeta(1000), '');
+assert.match(context.renderPriceMeta(1000), /￥1,000</);
 assert.equal(context.renderSelectedPriceInput(item), '');
 assert.equal(context.materializeSelectedItemForExport(item).price, 0);
-context.state.priceMode = 'normal';
-assert.equal(context.selectedPrice(item), '999.99');
 assert.equal(item.price, 1000);
+context.state.priceMode = 'base';
+context.updateSelectedField(item, 'price', '200');
 context.updateSelectedField(item, 'quantity', '4');
 assert.equal(item.quantity, '4');
 assert.equal((source.match(/updateSelectedField\(item, input.dataset.field, input.value\)/g) || []).length, 3);
@@ -63,7 +85,8 @@ async function testWorkbookPrices() {
   try {
     for (const mode of ['base', 'normal', 'special', 'hidden']) {
       context.state.priceMode = mode;
-      const exported = context.materializeSelectedItemForExport({ ...item, priceOverrides: undefined });
+      const exported = context.materializeSelectedItemForExport(item);
+      assert.equal(exported.price, { base: 200, normal: 204, special: 224, hidden: 0 }[mode]);
       for (const name of ['contract-template.xlsx', 'contract-template-normal.xlsx', 'quote-template.xlsx', 'quote-template （English）.xlsx']) {
         const outputPath = path.join(directory, `${mode}-${name}`);
         await (name.startsWith('contract') ? createContract : createQuote)({

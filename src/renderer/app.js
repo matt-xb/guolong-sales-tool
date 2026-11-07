@@ -674,8 +674,8 @@ function updateStaticLanguage() {
   el.searchInput.placeholder = uiText('搜索名称、型号、容量、加热方式或拼音...', 'Search name, model, capacity, heating method or Pinyin...');
   document.querySelector('#selectedCount')?.previousElementSibling && (document.querySelector('#selectedCount').previousElementSibling.textContent = uiText('已选清单', 'Selection'));
   document.querySelector('.action-hint').textContent = uiText('选好商品后，选择要输出的单据。', 'Select products first, then choose an output document.');
-  el.priceMode.setAttribute('aria-label', uiText('价格档位', 'Price Mode'));
-  document.querySelector('#priceModeLabel').textContent = uiText('价格档位', 'Price mode');
+  el.priceMode.setAttribute('aria-label', uiText('清单计价', 'List pricing'));
+  document.querySelector('#priceModeLabel').textContent = uiText('清单计价', 'List pricing');
   updatePriceModeControl();
   const englishText = el.quoteEnglishToggle.closest('label').querySelector('.switch-text');
   englishText.textContent = uiText('英文报价', 'English');
@@ -781,12 +781,7 @@ function bindEvents() {
   el.priceMode.addEventListener('input', () => {
     state.priceMode = ['hidden', 'base', 'normal', 'special'][Number(el.priceMode.value)];
     updatePriceModeControl();
-    renderCards();
     renderSelected();
-    if (!el.productDetailOverlay.classList.contains('hidden')) {
-      const activeId = Number(el.productDetailOverlay.dataset.itemId || 0);
-      if (activeId) openProductDetail(activeId);
-    }
   });
   el.quoteEnglishToggle.addEventListener('change', () => {
     state.quoteLanguage = el.quoteEnglishToggle.checked ? 'en' : 'zh';
@@ -1506,7 +1501,7 @@ function buildProductDetailHtml(item) {
         <div class="product-detail-meta">
           ${detailMeta(uiText('型号', 'Model'), translateModel(item.model || uiText('未填写', 'Not filled')))}
           ${detailMeta(uiText('外型尺寸', 'Overall Dimensions'), translateChineseText(item.dimensions || uiText('未填写', 'Not filled')))}
-          ${state.priceMode !== 'hidden' ? detailMeta(uiText('价格', 'Price'), formatPrice(priceForMode(item.price))) : ''}
+          ${detailMeta(uiText('价格', 'Price'), formatPrice(item.price))}
         </div>
         ${buildDocumentActionsHtml(item)}
       </div>
@@ -4688,7 +4683,7 @@ function showScopedToast(scope, message, type = 'info') {
 function updatePriceModeControl() {
   const index = ['hidden', 'base', 'normal', 'special'].indexOf(state.priceMode);
   el.priceMode.value = index;
-  const label = uiText(['隐藏', '显示原价', '普票 +2%', '专票 +12%'][index], ['Hidden', 'Base', 'Invoice +2%', 'VAT +12%'][index]);
+  const label = uiText(['隐藏', '基础价', '普票 +2%', '专票 +12%'][index], ['Hidden', 'Base', 'Invoice +2%', 'VAT +12%'][index]);
   document.querySelector('#priceModeValue').textContent = label;
   el.priceMode.setAttribute('aria-valuetext', label);
 }
@@ -4701,14 +4696,14 @@ function priceForMode(price) {
 }
 
 function selectedPrice(item) {
-  return item.priceOverrides && Object.hasOwn(item.priceOverrides, state.priceMode)
-    ? item.priceOverrides[state.priceMode] : priceForMode(item.price);
+  return priceForMode(item.price);
 }
 
 function updateSelectedField(item, field, value) {
   if (field === 'price') {
-    item.priceOverrides ||= {};
-    item.priceOverrides[state.priceMode] = value;
+    // 清单保存基础价；含加点档手改的是当前单价，反算后切档不叠加。
+    const multiplier = state.priceMode === 'normal' ? 1.02 : state.priceMode === 'special' ? 1.12 : 1;
+    item.price = value === '' ? '' : Number(value) / multiplier;
   } else {
     item[field] = value;
   }
@@ -4720,8 +4715,7 @@ function formatPrice(price) {
 }
 
 function renderPriceMeta(price) {
-  if (state.priceMode === 'hidden') return '';
-  return `<div>${uiText('价格', 'Price')}: <span class="price">${formatPrice(priceForMode(price))}</span></div>`;
+  return `<div>${uiText('价格', 'Price')}: <span class="price">${formatPrice(price)}</span></div>`;
 }
 
 function renderSelectedPriceInput(item) {

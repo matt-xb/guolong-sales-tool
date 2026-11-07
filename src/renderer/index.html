@@ -43,13 +43,7 @@
                   <span class="switch-track" aria-hidden="true"></span>
                   <span class="switch-text">英文报价</span>
                 </label>
-                <div class="price-slider">
-                  <div class="price-slider-heading"><span id="priceModeLabel">价格档位</span><output id="priceModeValue" for="priceMode">显示原价</output></div>
-                  <div class="price-slider-track">
-                    <span class="price-slider-ticks" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
-                    <input id="priceMode" type="range" min="0" max="3" step="1" value="1" aria-label="价格档位" aria-valuetext="显示原价" />
-                  </div>
-                </div>
+
               </div>
               <div class="hero-button-stack">
                 <button id="heroRecentFilesBtn" class="ghost-btn hero-recent-btn">最近文件</button>
@@ -78,6 +72,13 @@
         <aside class="selection">
           <div class="next-actions top-next-actions">
             <p class="action-hint">选好商品后，选择要输出的单据。</p>
+            <div class="price-slider">
+              <div class="price-slider-heading"><span id="priceModeLabel">清单计价</span><output id="priceModeValue" for="priceMode">基础价</output></div>
+              <div class="price-slider-track">
+                <span class="price-slider-ticks" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+                <input id="priceMode" type="range" min="0" max="3" step="1" value="1" aria-label="清单计价" aria-valuetext="基础价" />
+              </div>
+            </div>
             <button id="goContractBtn" class="primary-btn wide">制作合同</button>
             <button id="goQuoteBtn" class="ghost-btn wide">制作报价单</button>
           </div>
