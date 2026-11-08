@@ -647,7 +647,26 @@ function uiText(zh, en) {
   return isEnglishMode() ? en : zh;
 }
 
+function updateThemeControls() {
+  const dark = document.documentElement.dataset.theme === 'dark';
+  document.querySelectorAll('.theme-toggle').forEach(input => {
+    input.checked = dark;
+    const label = input.closest('label');
+    label.querySelector('.switch-text').textContent = dark ? uiText('夜间', 'Night') : uiText('白天', 'Day');
+    label.title = uiText('夜间主题：关闭为白天，打开为夜间', 'Night theme: off for day, on for night');
+    input.setAttribute('aria-label', uiText('夜间主题', 'Night theme'));
+  });
+}
+
+function toggleTheme() {
+  const theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+  document.documentElement.dataset.theme = theme;
+  try { localStorage.setItem('sales-theme', theme); } catch { /* Storage may be unavailable; switching still works for this session. */ }
+  updateThemeControls();
+}
+
 function updateStaticLanguage() {
+  updateThemeControls();
   document.documentElement.lang = isEnglishMode() ? 'en' : 'zh-CN';
   document.body.classList.toggle('english-mode', isEnglishMode());
   document.querySelector('.brand-block h1').textContent = uiText('销售选品工作台', 'Sales Selection Workspace');
@@ -749,6 +768,7 @@ async function acknowledgeReleaseNotes() {
 }
 
 function bindEvents() {
+  document.querySelectorAll('.theme-toggle').forEach(input => input.addEventListener('change', toggleTheme));
   el.typeFilter.addEventListener('click', async (event) => {
     const button = event.target.closest('button[data-type]');
     if (!button) return;

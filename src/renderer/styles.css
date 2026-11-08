@@ -2671,3 +2671,312 @@ label > span:first-child,
 .quote-remark-textarea {
   min-height: 190px;
 }
+
+.theme-control {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+  .topbar:has(.theme-toggle) {
+    height: auto;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .top-actions:has(.theme-toggle) {
+    flex-wrap: wrap;
+  }
+}
+
+/* Theme overrides stay isolated so the existing daytime palette is unchanged. */
+[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #182126;
+  --surface: #222e34;
+  --surface-2: #29383f;
+  --text: #dae3e6;
+  --muted: #a6b7bf;
+  --line: #41545e;
+  --accent: #70b8d8;
+  --accent-dark: #70b8d8;
+  --accent-soft: #263f4c;
+  --warn: #e3b975;
+  --shadow: 0 16px 40px rgba(0, 0, 0, 0.3);
+  --night-warning-bg: #3a3227;
+  --night-danger-bg: #402d32;
+  --night-danger-text: #f0a5a5;
+}
+
+[data-theme="dark"] body {
+  background:
+    radial-gradient(circle at top left, rgba(42, 154, 141, 0.07), transparent 34%),
+    var(--bg);
+}
+
+[data-theme="dark"] .brand-hero {
+  border-bottom-color: var(--line);
+  background:
+    linear-gradient(90deg, rgba(8, 118, 191, 0.18), rgba(42, 154, 141, 0.08)),
+    var(--surface);
+  box-shadow: var(--shadow);
+}
+
+[data-theme="dark"] .hero-copy {
+  color: var(--text);
+}
+
+[data-theme="dark"] .hero-copy p,
+[data-theme="dark"] .brand-hero .app-version {
+  color: var(--muted);
+}
+
+[data-theme="dark"] .brand-hero .app-version:hover {
+  color: var(--text);
+}
+
+[data-theme="dark"] :is(.topbar, .selection, .top-next-actions, .document-head,
+  .document-grid > div, .document-grid .contract-box, .placeholder-panel,
+  .price-visibility-toggle, .hero-actions .ghost-btn, .product-detail-close,
+  .gallery-arrow, .gallery-count, .product-detail-section, .material-context-menu,
+  .image-picker, .inventory-file-info, .inventory-preview-item, .recent-file-tabs button,
+  .toast, .scoped-toast, dialog, .app-confirm-dialog, .quick-requirements button) {
+  background: var(--surface);
+  border-color: var(--line);
+}
+
+[data-theme="dark"] :is(.filters, .selected-item, .price-slider,
+  .app-confirm-actions, .recent-file-tabs, .inventory-actions, .release-notes-actions,
+  .muted-list .inventory-preview-item, .clear-invoice-btn, .inventory-drop-zone) {
+  background: var(--surface-2);
+  border-color: var(--line);
+}
+
+[data-theme="dark"] :is(.product-detail-panel, .price-visibility-toggle) {
+  border-color: var(--line);
+}
+
+[data-theme="dark"] :is(.gallery-arrow, .gallery-count, .toast, .scoped-toast,
+  .recent-file-tabs button, .release-note-block ul) {
+  color: var(--text);
+}
+
+[data-theme="dark"] :is(.badge, .stock-tag, .material-copy-btn, .soft-btn,
+  .dialog-note, .inventory-preview-summary, .app-confirm-icon) {
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-color: var(--line);
+}
+
+[data-theme="dark"] .inventory-drop-zone strong,
+[data-theme="dark"] #itemForm label:focus-within,
+[data-theme="dark"] .contract-form-grid label:focus-within {
+  color: var(--accent);
+}
+
+[data-theme="dark"] :is(.ghost-btn:hover, .soft-btn:hover,
+  .material-copy-btn:hover:not(:disabled):not([aria-disabled="true"]),
+  .material-context-menu button:hover:not(:disabled), .quick-requirements button:hover,
+  .inventory-drop-zone.drag-over) {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+[data-theme="dark"] .recent-file-tabs button.active {
+  color: #fff;
+  border-color: var(--brand-blue);
+  background: linear-gradient(135deg, var(--brand-blue), var(--brand-teal));
+}
+
+[data-theme="dark"] :is(.material-copy-btn[aria-disabled="true"],
+  .material-context-menu button:disabled) {
+  color: var(--muted);
+  background: var(--surface-2);
+  border-color: var(--line);
+}
+
+[data-theme="dark"] .material-context-menu .danger-menu-item {
+  color: var(--night-danger-text);
+}
+
+[data-theme="dark"] :is(.card-placeholder, .image-preview-wrap) {
+  background: linear-gradient(135deg, var(--surface-2), var(--surface));
+}
+
+[data-theme="dark"] .card-placeholder {
+  color: var(--warn);
+}
+
+[data-theme="dark"] :is(.missing-info-pill, .completeness-panel,
+  .inventory-import-note, .app-confirm-details, .toast.warning, .scoped-toast.warning) {
+  color: var(--warn);
+  background: var(--night-warning-bg);
+  border-color: #79603e;
+}
+
+[data-theme="dark"] .completeness-panel b {
+  background: #51412d;
+}
+
+[data-theme="dark"] .app-confirm-dialog[data-tone="warning"] .app-confirm-icon {
+  color: var(--warn);
+  background: var(--night-warning-bg);
+}
+
+[data-theme="dark"] .app-confirm-dialog[data-tone="update"] :is(.app-confirm-icon, .app-confirm-details) {
+  color: #91cec3;
+  background: #253f3b;
+}
+
+[data-theme="dark"] :is(.toast.error, .scoped-toast.error),
+[data-theme="dark"] .app-confirm-dialog[data-tone="danger"] :is(.app-confirm-icon, .app-confirm-details) {
+  color: var(--night-danger-text);
+  background: var(--night-danger-bg);
+}
+
+[data-theme="dark"] #customDialog .dialog-head,
+[data-theme="dark"] #itemDialog .dialog-head,
+[data-theme="dark"] #itemDialog .dialog-actions {
+  background: var(--surface);
+}
+
+[data-theme="dark"] #itemForm {
+  background: var(--bg);
+}
+
+[data-theme="dark"] #itemForm .form-grid {
+  background: var(--surface);
+  border-color: var(--line);
+}
+
+[data-theme="dark"] #itemDialog .icon-btn {
+  color: var(--muted);
+  background: var(--surface-2);
+}
+
+[data-theme="dark"] label,
+[data-theme="dark"] #itemForm label {
+  color: var(--muted);
+}
+
+[data-theme="dark"] label > span:first-child {
+  color: var(--text);
+}
+
+[data-theme="dark"] :is(input, select, textarea),
+[data-theme="dark"] #itemForm :is(input, select, textarea),
+[data-theme="dark"] .contract-form-grid :is(input, select, textarea),
+[data-theme="dark"] .contract-terms-grid :is(input, select),
+[data-theme="dark"] #quoteRemark {
+  color: var(--text);
+  background-color: var(--surface-2);
+  border-color: var(--line);
+  box-shadow: none;
+}
+
+[data-theme="dark"] :is(input, select, textarea):hover,
+[data-theme="dark"] #itemForm :is(input, select, textarea):hover,
+[data-theme="dark"] .contract-form-grid :is(input, select, textarea):hover,
+[data-theme="dark"] .contract-terms-grid :is(input, select):hover,
+[data-theme="dark"] #quoteRemark:hover {
+  border-color: #66808d;
+}
+
+[data-theme="dark"] :is(input, select, textarea):focus,
+[data-theme="dark"] #itemForm :is(input, select, textarea):focus,
+[data-theme="dark"] .contract-form-grid :is(input, select, textarea):focus,
+[data-theme="dark"] .contract-terms-grid :is(input, select):focus,
+[data-theme="dark"] #quoteRemark:focus {
+  background-color: var(--surface);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(112, 184, 216, 0.2);
+}
+
+[data-theme="dark"] select {
+  background-image:
+    linear-gradient(45deg, transparent 50%, #a6b7bf 50%),
+    linear-gradient(135deg, #a6b7bf 50%, transparent 50%);
+}
+
+[data-theme="dark"] :is(input, textarea)::placeholder {
+  color: #95a9b3;
+}
+
+[data-theme="dark"] :is(button, .card, .product-image-copy-btn):focus-visible,
+[data-theme="dark"] .price-visibility-toggle:focus-within {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+[data-theme="dark"] .contract-review-field.review-needed :is(input, select) {
+  background-color: var(--night-warning-bg);
+  border-color: #b58c50;
+}
+
+[data-theme="dark"] .contract-review-field.review-needed::after,
+[data-theme="dark"] .inline-actions .invoice-recognition-ready::after {
+  border-color: var(--surface);
+}
+
+[data-theme="dark"] .clear-invoice-btn:hover {
+  color: #fff;
+  background: var(--danger);
+}
+
+[data-theme="dark"] .price-slider-heading {
+  color: var(--muted);
+}
+
+[data-theme="dark"] .price-slider-heading output {
+  color: var(--accent);
+}
+
+[data-theme="dark"] :is(.price-slider-track, .switch-track) {
+  background: #41545e;
+}
+
+[data-theme="dark"] .price-slider-ticks i {
+  background: #95a9b3;
+}
+
+[data-theme="dark"] .price-slider #priceMode {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
+[data-theme="dark"] .price-slider #priceMode::-webkit-slider-thumb {
+  background: var(--accent);
+  border-color: var(--line);
+}
+
+[data-theme="dark"] .price-slider #priceMode::-moz-range-thumb {
+  background: var(--accent);
+  border-color: var(--line);
+}
+
+[data-theme="dark"] .price-slider #priceMode:focus-visible {
+  outline-color: var(--accent);
+}
+
+[data-theme="dark"] textarea {
+  scrollbar-color: #66808d var(--surface-2);
+}
+
+[data-theme="dark"] textarea::-webkit-scrollbar-track {
+  background: var(--surface-2);
+}
+
+[data-theme="dark"] textarea::-webkit-scrollbar-thumb {
+  background: #66808d;
+  border-color: var(--surface-2);
+}
+
+[data-theme="dark"] textarea::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
+}
+
+[data-theme="dark"] .product-detail-overlay,
+[data-theme="dark"] dialog::backdrop {
+  background: rgba(5, 12, 16, 0.65);
+}

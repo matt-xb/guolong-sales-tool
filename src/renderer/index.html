@@ -4,6 +4,9 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>国龙食品机械销售工具</title>
+    <script>
+      try { document.documentElement.dataset.theme = localStorage.getItem('sales-theme') === 'dark' ? 'dark' : 'light'; } catch { document.documentElement.dataset.theme = 'light'; }
+    </script>
     <link rel="stylesheet" href="./styles.css" />
     <link rel="stylesheet" href="./assets/branding.css" />
   </head>
@@ -20,6 +23,11 @@
         </div>
         <div class="top-actions">
           <button id="backToCatalogBtn" class="ghost-btn hidden">返回选品</button>
+          <label class="price-visibility-toggle theme-control" title="夜间主题">
+                  <input class="theme-toggle" type="checkbox" role="switch" aria-label="夜间主题" />
+                  <span class="switch-track" aria-hidden="true"></span>
+                  <span class="switch-text">夜间</span>
+                </label>
           <button id="recentFilesBtn" class="ghost-btn">最近文件</button>
           <button id="newItemBtn" class="primary-btn">新增商品</button>
         </div>
@@ -38,6 +46,11 @@
             </div>
             <div class="hero-actions">
               <div class="hero-toggle-stack">
+                <label class="price-visibility-toggle theme-control" title="夜间主题">
+                  <input class="theme-toggle" type="checkbox" role="switch" aria-label="夜间主题" />
+                  <span class="switch-track" aria-hidden="true"></span>
+                  <span class="switch-text">夜间</span>
+                </label>
                 <label class="price-visibility-toggle" title="打开后制作报价单时使用英文模板，不影响合同">
                   <input id="quoteEnglishToggle" type="checkbox" />
                   <span class="switch-track" aria-hidden="true"></span>
