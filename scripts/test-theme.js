@@ -7,7 +7,7 @@ const source = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
 const boot = html.match(/<script>([\s\S]*?)<\/script>/)[1];
 function setup(saved, blocked = false) {
-  const buttons = Array.from({ length: 2 }, () => {
+  const buttons = Array.from({ length: 1 }, () => {
     const text = {};
     const label = { querySelector: () => text };
     return { text, closest: () => label, setAttribute(key, value) { this[key] = value; } };
@@ -46,6 +46,7 @@ const blocked = setup(null, true);
 assert.equal(blocked.document.documentElement.dataset.theme, 'light');
 assert.doesNotThrow(() => blocked.context.toggleTheme());
 assert.equal(blocked.document.documentElement.dataset.theme, 'dark');
-assert.equal((html.match(/class="theme-toggle" type="checkbox" role="switch"/g) || []).length, 2);
+assert.equal((html.match(/class="theme-toggle" type="checkbox" role="switch"/g) || []).length, 1);
+assert.doesNotMatch(html.slice(html.indexOf('<header'), html.indexOf('</header>')), /theme-toggle/);
 assert.match(source, /input\.addEventListener\('change', toggleTheme\)/);
 console.log('Theme startup, persistence, labels, repeated switching and blocked storage passed.');
