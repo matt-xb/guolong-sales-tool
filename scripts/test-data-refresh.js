@@ -37,21 +37,65 @@ async function main() {
   try {
     const mainSource = await fs.readFile(path.join(__dirname, '..', 'main.js'), 'utf8');
     const start = mainSource.indexOf('async function connectLanUpdateShare(');
-    const end = mainSource.indexOf('\nfunction getUncShareRoot(', start);
+    const end = mainSource.indexOf('\nfunction execFileSyncHidden(', start);
     assert(start >= 0 && end > start);
-    const connections = [];
+    let accessible = false, failLogin = false, active = 0, maxActive = 0;
+    const commands = [];
     const context = vm.createContext({
-      LAN_UPDATE: { shareUser: 'test-user', sharePass: 'test-password' },
-      getUncShareRoot: () => 'test-share',
+      LAN_UPDATE: { shareUser: 'test-user', sharePass: 'synthetic-secret' },
+      fs: { constants: { R_OK: 4 }, promises: { access: async (source) => {
+        if (!accessible || source === 'missing') throw Object.assign(new Error('missing'), { code: 'ENOENT', syscall: 'access' });
+      } } },
       execFile: (file, args, options, done) => {
         assert.strictEqual(file, 'net.exe');
         assert.strictEqual(options.windowsHide, true);
-        connections.push(args.includes('/delete') ? 'disconnect' : 'connect');
-        setTimeout(() => done(null), 1);
+        assert.strictEqual(options.timeout, 15000);
+        assert(!args.includes('/delete'));
+        assert(args.includes('/persistent:no'));
+        commands.push(args); maxActive = Math.max(maxActive, ++active);
+        setTimeout(() => {
+          active--;
+          if (failLogin) done(new Error('command synthetic-secret'), '', 'System error 1219');
+          else { accessible = true; done(null); }
+        }, 1);
       }
     });
-    await vm.runInContext(`let lanConnection = Promise.resolve(); ${mainSource.slice(start, end)}; Promise.all([connectLanUpdateShare('test'), connectLanUpdateShare('test')])`, context);
-    assert.deepStrictEqual(connections, ['disconnect', 'connect', 'disconnect', 'connect']);
+    vm.runInContext(`let lanConnection = Promise.resolve(); ${mainSource.slice(start, end)}`, context);
+    const share = String.raw`\\server\share`;
+    accessible = true;
+    await context.connectLanUpdateShare(share);
+    assert.strictEqual(commands.length, 0, 'reuse existing Windows login');
+    accessible = false;
+    await Promise.all([context.connectLanUpdateShare(share), context.connectLanUpdateShare(share)]);
+    assert.strictEqual(commands.length, 1, 'queued request reuses first login');
+    assert.strictEqual(maxActive, 1);
+    accessible = false; failLogin = true;
+    await assert.rejects(context.connectLanUpdateShare(share), (error) => error.message.includes('1219') && !error.message.includes('synthetic-secret'));
+    failLogin = false;
+    await context.connectLanUpdateShare(share);
+    assert.strictEqual(commands.length, 3, 'queue recovers after failed login');
+    const eventsConnect = [];
+    assert.strictEqual(await context.resolveLanUpdateSource(['missing', share], event => eventsConnect.push(event)), share);
+    assert.strictEqual(eventsConnect.length, 2);
+    await assert.rejects(context.resolveLanUpdateSource(['missing']), /ENOENT/);
+    await assert.rejects(context.resolveLanUpdateSource([]), /无法访问/);
+    context.LAN_UPDATE.shareUser = '';
+    await context.connectLanUpdateShare(share);
+    assert.strictEqual(commands.length, 3);
+    const parserStart = mainSource.indexOf('function getLanUpdateSources(');
+    const parserEnd = mainSource.indexOf('async function checkLanUpdate(', parserStart);
+    const parser = vm.createContext({ fs: require('fs'), path, getDataDir: () => temp, process: { resourcesPath: temp }, __dirname: temp,
+      LAN_UPDATE: { sourceConfigName: 'update-source.txt', defaultSourcePath: 'default-source' } });
+    vm.runInContext(mainSource.slice(parserStart, parserEnd), parser);
+    assert.deepStrictEqual(Array.from(parser.getLanUpdateSources()), ['default-source']);
+    await write(path.join(temp, 'update-source.txt'), '\ufeff# comment\r\n first \r\n\r\n# backup\r\nsecond\r\nfirst\r\n');
+    assert.deepStrictEqual(Array.from(parser.getLanUpdateSources()), ['first', 'second']);
+    await write(path.join(temp, 'update-source.txt'), 'single');
+    assert.deepStrictEqual(Array.from(parser.getLanUpdateSources()), ['single']);
+    await write(path.join(temp, 'update-source.txt'), '# empty');
+    assert.deepStrictEqual(Array.from(parser.getLanUpdateSources()), ['default-source']);
+    assert(mainSource.includes('sourcePath = await resolveLanUpdateSource(sources)'));
+    assert(mainSource.includes('source = await resolveLanUpdateSource(sources, report)'));
     const success = await fixture('success');
     const events = [];
     await refreshData(success.source, success.target, (event) => events.push(event));

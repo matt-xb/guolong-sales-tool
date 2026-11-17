@@ -21,7 +21,7 @@ async function main() {
       for (const [file, value] of [['sales.sqlite', valid], ['images/one.png', 'image1'], ['images/two.png', 'image2'], ['resources/materials/one.pdf','pdf'], ['app.exe','fake runtime'], ['release-version.json','{"version":"2.22.0"}'], ['resources/app/package.json','{"version":"2.22.0"}'], ['resources/app/main.js','new code']]) await write(path.join(base,file),value);
       await write(path.join(base,'outputs/contract.xlsx'),'PRIVATE_OUTPUT');
       await write(path.join(base,'local-data/recent-files.json'),'PRIVATE_RECENT');
-      await write(path.join(base,'update-source.txt'),'LOCAL_SOURCE');
+      await write(path.join(base,'update-source.txt'),'# preferred\r\nLOCAL_SOURCE\r\n# backup\r\nLOCAL_BACKUP\r\n');
     }
     return { source, target };
   }
@@ -90,7 +90,7 @@ async function main() {
       assert.equal(await fs.readFile(path.join(p.target,'resources/app/main.js'),'utf8'),'new code');
       await assert.rejects(fs.access(path.join(p.target,'obsolete.dll')));
       assert.equal(await fs.readFile(path.join(p.target,'local-data/recent-files.json'),'utf8'),'PRIVATE_RECENT');
-      assert.equal(await fs.readFile(path.join(p.target,'update-source.txt'),'utf8'),'LOCAL_SOURCE');
+      assert.equal(await fs.readFile(path.join(p.target,'update-source.txt'),'utf8'),'# preferred\r\nLOCAL_SOURCE\r\n# backup\r\nLOCAL_BACKUP\r\n');
       const cancelled=await fixture('cancelled-program');
       await write(path.join(cancelled.target,'resources/app/main.js'),'old code'); await publishManifest(cancelled.source);
       const stopped=await prepareProgramUpdate(cancelled.source,cancelled.target,path.join(cancelled.target,'app.exe'),0);

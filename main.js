@@ -784,9 +784,10 @@ function readDataRefreshResult() {
   }
 }
 
-function getLanUpdateSourcePath() {
+function getLanUpdateSources() {
   const configPath = getLanUpdateSourceConfigPath();
-  return (configPath ? readFirstLineIfExists(configPath) : '') || LAN_UPDATE.defaultSourcePath;
+  const sources = configPath ? readUpdateSourceLines(configPath) : [];
+  return sources.length ? sources : [LAN_UPDATE.defaultSourcePath].filter(Boolean);
 }
 
 function getLanUpdateSourceConfigPath() {
@@ -798,19 +799,20 @@ function getLanUpdateSourceConfigPath() {
   return candidates.find((candidate) => candidate && fs.existsSync(candidate)) || '';
 }
 
-function readFirstLineIfExists(filePath) {
+function readUpdateSourceLines(filePath) {
   try {
-    if (!filePath || !fs.existsSync(filePath)) return '';
-    return fs.readFileSync(filePath, 'utf8').split(/\r?\n/).map((line) => line.trim()).find((line) => line && !line.startsWith('#')) || '';
-  } catch {
-    return '';
+    if (!filePath || !fs.existsSync(filePath)) return [];
+    return [...new Set(fs.readFileSync(filePath, 'utf8').split(/\r?\n/).map((line) => line.trim()).filter((line) => line && !line.startsWith('#')))];
+  } catch (error) {
+    throw new Error(`无法读取资料源配置：${filePath}（${error.code || '读取失败'}）`);
   }
 }
 
 async function checkLanUpdate() {
   if (refreshBusy) return { available: false, message: '正在刷新资料，请稍后检查更新。' };
   const targetDir = getDataDir();
-  const sourcePath = getLanUpdateSourcePath();
+  const sources = getLanUpdateSources();
+  let sourcePath = sources[0] || '';
   const localVersionFile = path.join(targetDir, LAN_UPDATE.versionFileName);
   const currentVersion = readVersionFile(localVersionFile);
   if (!currentVersion) {
@@ -819,10 +821,7 @@ async function checkLanUpdate() {
   if (!sourcePath) {
     return { available: false, currentVersion, latestVersion: '', sourcePath: '', message: '未找到 update-source.txt，请先配置更新源路径。' };
   }
-  await connectLanUpdateShare(sourcePath);
-  if (!fs.existsSync(sourcePath)) {
-    return { available: false, currentVersion, latestVersion: '', sourcePath, message: buildUpdateSourceAccessMessage(sourcePath) };
-  }
+  sourcePath = await resolveLanUpdateSource(sources);
 
   const remoteVersionFile = path.join(sourcePath, LAN_UPDATE.versionFileName);
   if (!fs.existsSync(remoteVersionFile)) {
@@ -955,8 +954,9 @@ function runAfterSalesVideoScript(scriptPath) {
 async function startDataRefresh(mode = 'data', updateSource) {
   if (refreshWindow) { operationLog.write('data-refresh', { result: 'skipped', reason: 'already_running' }); refreshWindow.focus(); return; }
   const program = mode === 'program';
-  const source = updateSource || getLanUpdateSourcePath();
-  if (!source) throw new Error('资料源路径为空。');
+  const sources = updateSource ? [updateSource] : getLanUpdateSources();
+  if (!sources.length) throw new Error('资料源路径为空，请配置 update-source.txt。');
+  let source;
   const target = getDataDir();
   let succeeded = false;
   let applied = false;
@@ -993,7 +993,8 @@ async function startDataRefresh(mode = 'data', updateSource) {
   (async () => {
     try {
       report({ step: 0, detail: '正在建立局域网连接…' });
-      await connectLanUpdateShare(source);
+      source = await resolveLanUpdateSource(sources, report);
+      report({ step: 0, detail: `资料源：${source}` });
       if (program) {
         const result = await prepareProgramUpdate(source, target, process.execPath, process.pid, report);
         report({ step: 5, detail: '下载与校验完成，正在安装并重新打开软件…', ...result });
@@ -1055,14 +1056,41 @@ async function startDataRefresh(mode = 'data', updateSource) {
 
 async function connectLanUpdateShare(sourcePath) {
   const shareRoot = getUncShareRoot(sourcePath);
-  if (!shareRoot || !LAN_UPDATE.shareUser || !LAN_UPDATE.sharePass) return;
-  const run = (args) => new Promise((resolve) => execFile('net.exe', args, { windowsHide: true }, () => resolve()));
-  // Serialize authentication so a background version check cannot disconnect an active refresh.
-  lanConnection = lanConnection.then(async () => {
-    await run(['use', shareRoot, '/delete', '/y']);
-    await run(['use', shareRoot, LAN_UPDATE.sharePass, `/user:${LAN_UPDATE.shareUser}`, '/persistent:yes']);
+  // Reuse working Windows credentials; never disconnect a share used by another operation.
+  const connection = lanConnection.then(async () => {
+    try { await fs.promises.access(shareRoot || sourcePath, fs.constants.R_OK); return; } catch {}
+    if (!shareRoot || !LAN_UPDATE.shareUser || !LAN_UPDATE.sharePass) return;
+    await new Promise((resolve, reject) => {
+      execFile('net.exe', ['use', shareRoot, LAN_UPDATE.sharePass, `/user:${LAN_UPDATE.shareUser}`, '/persistent:no'],
+        { windowsHide: true, timeout: 15000 }, (error, stdout, stderr) => {
+          if (!error) { resolve(); return; }
+          // Do not expose error.message: Node includes the command and password in it.
+          const code = String(stderr || stdout || '').match(/\b(1219|1326|1330|1331|1385|1909|2242|86|53|67|5)\b/)?.[1];
+          const reason = code === '1219' ? '同一服务器已有其他账号的连接，请在 Windows 中确认连接账号（不自动断开）'
+            : code === '1326' || code === '86' ? '账号或密码不正确'
+            : code === '5' || code === '1385' ? '账号没有共享访问权限或受登录策略限制'
+            : error.killed ? '共享登录超时' : '共享登录失败，请在资源管理器中核对账号、网络和权限';
+          reject(new Error(`${reason}${code ? `（Windows ${code}）` : ''}`));
+        });
+    });
   });
-  await lanConnection;
+  lanConnection = connection.catch(() => {});
+  await connection;
+}
+
+async function resolveLanUpdateSource(sources, report = () => {}) {
+  const failures = [];
+  for (const source of sources) {
+    report({ step: 0, detail: `正在连接资料源：${source}` });
+    try {
+      await connectLanUpdateShare(source);
+      await fs.promises.access(source, fs.constants.R_OK);
+      return source;
+    } catch (error) {
+      failures.push(`${source}\n${error.syscall ? `目录无法读取（${error.code || '读取失败'}）` : error.message}`);
+    }
+  }
+  throw new Error(`无法访问已配置的资料源。本机原有数据未更改。\n${failures.join('\n\n')}\n请在这台电脑的资源管理器打开上述同一地址；电脑名与 IP 的登录可能不同。可在 update-source.txt 中逐行配置已确认的备用地址。`);
 }
 
 function getUncShareRoot(sourcePath) {
@@ -1073,15 +1101,6 @@ function getUncShareRoot(sourcePath) {
 function execFileSyncHidden(file, args) {
   const { execFileSync } = require('child_process');
   execFileSync(file, args, { windowsHide: true, stdio: 'ignore' });
-}
-
-function buildUpdateSourceAccessMessage(sourcePath) {
-  return [
-    '无法访问更新源。',
-    `更新源：${sourcePath}`,
-    '请先在这台电脑的资源管理器地址栏打开上面的路径。',
-    '如果资源管理器也打不开，请检查：更新源电脑是否开机、两台电脑是否在同一网络、网络发现和文件共享是否开启、防火墙是否允许文件和打印机共享、更新源电脑名是否能被同事电脑解析。'
-  ].join('\n');
 }
 
 handleOperation('contract:create', async (_event, payload) => {
