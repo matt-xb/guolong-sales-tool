@@ -26,7 +26,7 @@ function stageApplication(root, output, company, dataRoot = company) {
   for (const name of ['main.js', 'preload.js', 'package.json', 'package-lock.json', 'LICENSE', 'src', 'scripts', 'templates']) copy(path.join(root, name), path.join(app, name));
   if (!company) return;
   const edition = JSON.parse(fs.readFileSync(path.join(company, 'edition.json'), 'utf8'));
-  const allowed = ['updateSource', 'shareUser', 'videoScript'];
+  const allowed = ['updateSource', 'shareUser', 'videoScript', 'videoUrl'];
   if (Object.keys(edition).some(key => !allowed.includes(key)) || Object.values(edition).some(value => typeof value !== 'string')) {
     throw new Error('Unsupported company setting; credentials must use environment variables');
   }

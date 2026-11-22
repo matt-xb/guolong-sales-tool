@@ -794,7 +794,7 @@ function bindEvents() {
   el.heroNewItemBtn.addEventListener('click', () => openItemDialog());
   el.recentFilesBtn.addEventListener('click', openRecentFiles);
   el.heroRecentFilesBtn.addEventListener('click', openRecentFiles);
-  el.heroAfterSalesVideoBtn.addEventListener('click', openAfterSalesVideo);
+  el.heroAfterSalesVideoBtn.addEventListener('click', () => openAfterSalesVideo());
   el.heroImportInventoryBtn.addEventListener('click', openInventoryDialog);
   el.heroUpdateAppBtn.addEventListener('click', handleUpdateClick);
   el.heroDataRefreshBtn.addEventListener('click', handleDataRefreshClick);
@@ -1523,6 +1523,7 @@ function buildProductDetailHtml(item) {
           ${detailMeta(uiText('外型尺寸', 'Overall Dimensions'), translateChineseText(item.dimensions || uiText('未填写', 'Not filled')))}
           ${detailMeta(uiText('价格', 'Price'), formatPrice(item.price))}
         </div>
+        ${item.type === 'equipment' ? `<button type="button" class="ghost-btn" data-after-sales-item-id="${item.id}">${uiText('查看本设备售后视频', 'After-sales videos for this equipment')}</button>` : ''}
         ${buildDocumentActionsHtml(item)}
       </div>
     </div>
@@ -1573,6 +1574,11 @@ function buildDocumentActionsHtml(item) {
 
 async function copyMaterialFromDetail(event) {
   if (gallerySuppressClick) return;
+  const videoButton = event.target.closest('[data-after-sales-item-id]');
+  if (videoButton) {
+    await openAfterSalesVideo(Number(videoButton.dataset.afterSalesItemId));
+    return;
+  }
   const imageButton = event.target.closest('.product-image-copy-btn');
   if (imageButton) {
     await copyProductImageFromDetail(imageButton);
@@ -2257,10 +2263,10 @@ async function openRecentFiles() {
   }
 }
 
-async function openAfterSalesVideo() {
+async function openAfterSalesVideo(itemId) {
   try {
     showToast('正在打开售后视频库...', 'info');
-    await window.salesApi.openAfterSalesVideo();
+    await window.salesApi.openAfterSalesVideo(itemId);
     showToast('售后视频库已打开。', 'success');
   } catch (error) {
     showToast(error.message || '售后视频库启动失败，请检查网络或视频库服务', 'error');

@@ -19,13 +19,9 @@ const {
   isManagedImportedMaterialPath
 } = require('./src/main/material-files');
 const { resolveUniqueCustomerCode } = require('./src/shared/customer-code');
+const { buildAfterSalesVideoUrl } = require('./src/main/after-sales-video');
 
 const edition = require('./package.json').salesEdition || {};
-
-const AFTER_SALES_VIDEO = {
-  scriptName: 'open-after-sales-video.vbs',
-  fallbackScriptPath: process.env.SALES_VIDEO_SCRIPT || edition.videoScript || ''
-};
 
 const LAN_UPDATE = {
   sourceConfigName: 'update-source.txt',
@@ -355,13 +351,18 @@ handleOperation('recent:copy', async (_event, filePath) => {
   return { ok: true };
 });
 
-handleOperation('after-sales-video:open', async () => {
-  const scriptPath = getAfterSalesVideoScriptPath();
-  if (!scriptPath) {
-    throw new Error('售后视频库启动失败，请检查网络或视频库服务');
+handleOperation('after-sales-video:open', async (_event, itemId) => {
+  let deviceName;
+  if (itemId !== undefined) {
+    if (!Number.isSafeInteger(itemId) || itemId <= 0) throw new Error('设备编号无效，无法定位售后视频。');
+    const item = (await getDatabase()).getItem(itemId);
+    if (!item || item.type !== 'equipment') throw new Error('设备不存在，无法定位售后视频。');
+    if (typeof item.name !== 'string' || !item.name.trim()) throw new Error('设备名称为空，无法定位售后视频。');
+    deviceName = item.name;
   }
-
-  await runAfterSalesVideoScript(scriptPath);
+  const url = buildAfterSalesVideoUrl(process.env.SALES_VIDEO_URL || edition.videoUrl || '', deviceName);
+  try { await shell.openExternal(url); }
+  catch { throw new Error('售后视频库启动失败，请检查网络或视频库服务'); }
   return true;
 });
 
@@ -762,16 +763,6 @@ function getPowerShellExePath() {
   return path.join(systemRoot, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe');
 }
 
-function getAfterSalesVideoScriptPath() {
-  const candidates = [
-    path.join(getDataDir(), 'tools', AFTER_SALES_VIDEO.scriptName),
-    path.join(process.resourcesPath || '', 'tools', AFTER_SALES_VIDEO.scriptName),
-    path.join(__dirname, 'tools', AFTER_SALES_VIDEO.scriptName),
-    AFTER_SALES_VIDEO.fallbackScriptPath
-  ];
-  return candidates.find((candidate) => candidate && fs.existsSync(candidate)) || '';
-}
-
 function readDataRefreshResult() {
   const filePath = path.join(ensureAppDirs().localDataDir, 'data-refresh-result.txt');
   if (!fs.existsSync(filePath)) return null;
@@ -937,18 +928,6 @@ function compareVersions(left, right) {
     if (diff) return diff;
   }
   return 0;
-}
-
-function runAfterSalesVideoScript(scriptPath) {
-  return new Promise((resolve, reject) => {
-    execFile('wscript.exe', [scriptPath], { windowsHide: true }, (error) => {
-      if (error) {
-        reject(new Error('售后视频库启动失败，请检查网络或视频库服务'));
-        return;
-      }
-      resolve(true);
-    });
-  });
 }
 
 async function startDataRefresh(mode = 'data', updateSource) {

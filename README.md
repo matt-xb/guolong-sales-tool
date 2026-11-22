@@ -1,6 +1,6 @@
 # 国龙销售工具 · 公开源码版
 
-基于 Electron、SQLite/SQL.js 和 ExcelJS 的本地销售工具，公司版和公开版共用这一份程序源码，当前功能版本为 2.24.5。
+基于 Electron、SQLite/SQL.js 和 ExcelJS 的本地销售工具，公司版和公开版共用这一份程序源码，当前功能版本为 2.24.6。
 
 最近文件按合同和报价单分类，可打开文件、定位所在文件夹或复制文件本体到 Windows 剪贴板，再粘贴到聊天工具或文件夹。文件已移动或删除时会提示具体原因。
 
@@ -51,7 +51,7 @@ npm test
 npm run package -- --company-content <private-distribution> --data-root <private-catalog> --output <new-output>
 ```
 
-私有分发目录提供 `edition.json`（仅 updateSource、shareUser、videoScript）、四份 `templates/*.xlsx`，以及可选的 `branding`、`tools`、`release-notes.json`。私有资料目录提供 `data/seed-sales.sqlite`、`images`、`materials`；不传 `--data-root` 时使用私有分发目录。密码不接受 JSON 配置，只读取 `SALES_SHARE_PASSWORD`，公司版兼容 `GUOLONG_SHARE_PASS`。
+私有分发目录提供 `edition.json`（仅 updateSource、shareUser、videoUrl，以及旧构建兼容字段 videoScript）、四份 `templates/*.xlsx`，以及可选的 `branding`、`tools`、`release-notes.json`。私有资料目录提供 `data/seed-sales.sqlite`、`images`、`materials`；不传 `--data-root` 时使用私有分发目录。密码不接受 JSON 配置，只读取 `SALES_SHARE_PASSWORD`，公司版兼容 `GUOLONG_SHARE_PASS`。
 
 公司包使用原应用名和标识，公开包保留独立身份。两种包的业务源码完全相同；公司包在打包时载入私有模板和品牌资源。运行代码位于 `resources/app`，不再依赖旧私有源码打 ASAR 的流程。公司包不得上传到公开 Release。
 
@@ -85,8 +85,9 @@ Windows 程序升级使用系统脚本宿主隐藏启动 PowerShell，并在安�
 
 - `SALES_UPDATE_SOURCE`：自己的更新共享目录，也可用本机 `update-source.txt` 指定。配置文件每行一个地址，忽略空行及 `#` 开头的注释，按顺序尝试；可先写电脑名地址，再写已确认可访问的 IP 地址。只在连接阶段选定一个源，不会在复制中途切换。程序优先复用 Windows 已有的共享登录，不会自动断开现有连接；认证失败会显示所尝试地址和安全的错误原因。
 - `SALES_SHARE_USER` / `SALES_SHARE_PASSWORD`：需要认证时从运行环境提供；不要提交密码或本机配置。
-- `SALES_VIDEO_URL`：自己的售后视频服务地址。
-- `SALES_VIDEO_SCRIPT`：可选的本机视频启动脚本。
+- `SALES_VIDEO_URL`：自己的 HTTPS 售后视频服务地址；公司构建可用私有 `edition.json` 的 `videoUrl`。直接在默认浏览器打开，不依赖共享盘、VBS 或本机脚本。设备详情传递设备名称，视频页须支持 `device` 查询参数并精确定位对应分类；不存在或重名时应明确提示，不退回其他设备视频。顶栏入口打开视频库首页。
+
+公司打包会在复制前和暂存后检查 SQLite、主图、相册及已绑定资料；缺文件、损坏记录或不可移植路径会停止构建。原本没有绑定图片或资料的商品不会自动补图。
 
 现有公司版私有仓库和程序包继续保留。本公开仓库不分发包含公司产品资料的安装包。
 

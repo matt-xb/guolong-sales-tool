@@ -143,7 +143,7 @@ contextBridge.exposeInMainWorld('salesApi', {
   openRecentFile: (filePath) => ipcRenderer.invoke('recent:open', filePath),
   revealRecentFile: (filePath) => ipcRenderer.invoke('recent:reveal', filePath),
   copyRecentFile: (filePath) => ipcRenderer.invoke('recent:copy', filePath),
-  openAfterSalesVideo: () => ipcRenderer.invoke('after-sales-video:open'),
+  openAfterSalesVideo: (itemId) => ipcRenderer.invoke('after-sales-video:open', itemId),
   copyMaterialFile: (relativePath) => ipcRenderer.invoke('materials:copy', relativePath),
   attachMaterialFile: (payload) => ipcRenderer.invoke('materials:attach', payload),
   removeMaterialFile: (payload) => ipcRenderer.invoke('materials:remove', payload),
