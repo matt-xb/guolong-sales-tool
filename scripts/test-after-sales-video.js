@@ -13,7 +13,10 @@ const { buildAfterSalesVideoUrl } = require('../src/main/after-sales-video');
   assert.equal(linked.searchParams.get('device'), name);
   assert.equal(linked.origin, 'https://videos.example.test');
   assert.equal(linked.searchParams.get('category'), null);
-  for (const value of ['', null, {}, 'not a url', 'http://videos.example.test', 'javascript:alert(1)', 'file:///C:/tool.vbs', 'data:text/html,test', 'https://user:pass@videos.example.test', 'https://user@videos.example.test']) {
+  const lan = new URL(buildAfterSalesVideoUrl('http://192.168.1.10:8001/', name));
+  assert.equal(lan.origin, 'http://192.168.1.10:8001');
+  assert.equal(lan.searchParams.get('device'), name);
+  for (const value of ['', null, {}, 'not a url', 'ftp://videos.example.test', 'javascript:alert(1)', 'file:///C:/tool.vbs', 'data:text/html,test', 'https://user:pass@videos.example.test', 'https://user@videos.example.test', 'http://user:pass@192.168.1.10:8001/']) {
     assert.throws(() => buildAfterSalesVideoUrl(value), /未配置|HTTPS/);
   }
   for (const value of ['', '  ', null, {}]) assert.throws(() => buildAfterSalesVideoUrl(base, value), /设备名称/);
@@ -24,7 +27,7 @@ const { buildAfterSalesVideoUrl } = require('../src/main/after-sales-video');
   let openError;
   const items = new Map([[7, { type: 'equipment', name }], [8, { type: 'part', name: '配件甲' }], [9, { type: 'equipment', name: '' }], [10, { type: 'equipment' }]]);
   const database = { getItem: id => { lookedUp.push(id); return items.get(id); } };
-  const environment = { SALES_VIDEO_URL: 'https://override.example.test/videos' };
+  const environment = { SALES_VIDEO_URL: 'http://192.168.1.10:8001/videos' };
   const electron = {
     app: { isPackaged: false, requestSingleInstanceLock: () => false, quit() {}, on() {}, getPath: () => root },
     ipcMain: { handle: (channel, handler) => handlers.set(channel, handler), on() {} },
@@ -93,5 +96,5 @@ const { buildAfterSalesVideoUrl } = require('../src/main/after-sales-video');
   vm.runInContext(source.slice(source.indexOf('function buildProductDetailHtml('), source.indexOf('function detailMeta(')), renderer);
   assert(renderer.buildProductDetailHtml(renderer.item).includes('data-after-sales-item-id="7"'));
   assert(!renderer.buildProductDetailHtml({ ...renderer.item, type: 'part' }).includes('data-after-sales-item-id'));
-  console.log('After-sales video: HTTPS validation, database-only equipment names, env/edition, no script fallback, preload and detail/home renderer passed (synthetic only).');
+  console.log('After-sales video: HTTP/HTTPS validation, database-only equipment names, env/edition, no script fallback, preload and detail/home renderer passed (synthetic only).');
 })().catch(error => { console.error(error); process.exitCode = 1; });
